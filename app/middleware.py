@@ -6,7 +6,7 @@ from datetime import datetime
 import keyboard
 import models
 from app import middleware_base, bot, post_base, end_base
-from tool import language_check, create_inlineKeyboard
+from tool import language_check, create_inline_keyboard
 
 
 def check_user(user_id):
@@ -29,23 +29,27 @@ def create_draw_progress(user_id, tmp):
 def draw_info(user_id):
     tmp = check_post(str(user_id))
     text = language_check(user_id)[1]['draw']
-    draw_text = f"{text['change_text']}\n{text['post_time_text']} {tmp.post_time}\n{text['over_time_text']} {tmp.end_time}\n{text['chanel/chat']} {tmp.chanel_name}\n{text['count_text']} {tmp.winners_count}\n{text['text']} {tmp.text}"
+    return f"{text['change_text']}\n{text['post_time_text']} {tmp.post_time}\n{text['over_time_text']} {tmp.end_time}\n{text['chanel/chat']} {tmp.chanel_name}\n{text['count_text']} {tmp.winners_count}\n{text['text']} {tmp.text}"
 
 
 def check_post(user_id):
-    data = middleware_base.get_one(models.DrawProgress, user_id=str(user_id))
+    return middleware_base.get_one(models.DrawProgress, user_id=str(user_id))
 
 
 def send_draw_info(user_id):
     tmp = check_post(str(user_id))
     text = language_check(user_id)[1]['draw']
     draw_text = f"{text['change_text']}\n{text['post_time_text']} {tmp.post_time}\n{text['over_time_text']} {tmp.end_time}\n{text['chanel/chat']} {tmp.chanel_name}\n{text['count_text']} {tmp.winners_count}\n{text['text']} {tmp.text}"
+
     if tmp.file_type == 'photo':
         bot.send_photo(user_id, tmp.file_id, draw_text, reply_markup=keyboard.get_draw_keyboard(user_id))
+
     if tmp.file_type == 'document':
         bot.send_document(user_id, tmp.file_id, caption=draw_text, reply_markup=keyboard.get_draw_keyboard(user_id))
+
     else:
         bot.send_message(user_id, draw_text, reply_markup=keyboard.get_draw_keyboard(user_id))
+
     middleware_base.delete(models.State, user_id=user_id)
 
 
@@ -64,7 +68,7 @@ def my_draw_info(user_id, row=0):
         print('notttt')
 
     draw_text = f"{text['your_draw']}\n{text['post_time_text']} {all_draws[row].post_time}\n{text['over_time_text']} {all_draws[row].end_time}\n{text['chanel/chat']} {all_draws[row].chanel_name}\n{text['count_text']} {all_draws[row].winners_count}\n{text['text']} {all_draws[row].text}"
-    keyboard_markup = create_inlineKeyboard({text['back']: "back", text['next']: "next"}, 2)
+    keyboard_markup = create_inline_keyboard({text['back']: "back", text['next']: "next"}, 2)
     if all_draws[row].file_type == 'photo':
         bot.send_photo(user_id, all_draws[row].file_id, draw_text, reply_markup=keyboard_markup)
     elif all_draws[row].file_type == 'document':
@@ -80,15 +84,14 @@ def start_draw_timer():
 
                 count = 0
                 post_time = datetime.now().strftime('%Y-%m-%d %H:%M')
-                post_time = time.strptime(post_time, '%Y-%m-%d %H:%M')
                 if post_time >= time.strptime(i.post_time, '%Y-%m-%d %H:%M'):
                     if i.file_type == 'photo':
-                        tmz = bot.send_photo(i.chanel_id, i.file_id, i.text, reply_markup=create_inlineKeyboard({language_check(i.user_id)[1]['draw']['get_on']: f'geton_{i.id}'}))
+                        tmz = bot.send_photo(i.chanel_id, i.file_id, i.text, reply_markup=create_inline_keyboard({language_check(i.user_id)[1]['draw']['get_on']: f'geton_{i.id}'}))
                     elif i.file_type == 'document':
                         tmz = bot.send_document(i.chanel_id, i.file_id, caption=i.text,
-                                                reply_markup=create_inlineKeyboard({language_check(i.user_id)[1]['draw']['get_on']: f'geton_{i.id}'}))
+                                                reply_markup=create_inline_keyboard({language_check(i.user_id)[1]['draw']['get_on']: f'geton_{i.id}'}))
                     else:
-                        tmz = bot.send_message(i.chanel_id, i.text, reply_markup=create_inlineKeyboard({language_check(i.user_id)[1]['draw']['get_on']: f'geton_{i.id}'}))
+                        tmz = bot.send_message(i.chanel_id, i.text, reply_markup=create_inline_keyboard({language_check(i.user_id)[1]['draw']['get_on']: f'geton_{i.id}'}))
                     post_base.new(models.Draw, i.id, i.user_id, tmz.message_id, i.chanel_id, i.chanel_name, i.text, i.file_type, i.file_id, i.winners_count, i.post_time,
                                   i.end_time)
                     post_base.delete(models.DrawNot, id=str(i.id))
@@ -104,11 +107,10 @@ def end_draw_timer():
             for i in end_base.select_all(models.Draw):
                 count = 0
                 post_time = datetime.now().strftime('%Y-%m-%d %H:%M')
-                post_time = time.strptime(post_time, '%Y-%m-%d %H:%M')
                 if post_time >= time.strptime(i.end_time, '%Y-%m-%d %H:%M'):
                     text = language_check(i.user_id)[1]['draw']
                     players = end_base.select_all(models.DrawPlayer, draw_id=str(i.id))
-                    if players == []:
+                    if not players:
                         winners = f"{i.text}\n*****\n{text['no_winners']}"
                         owin = f"{text['no_winners']}"
                     else:

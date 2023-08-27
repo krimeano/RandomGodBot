@@ -8,7 +8,7 @@ import models
 from app import fsm, bot
 from app import main_base as base
 from middleware import keyboard
-from tool import language_check, create_inlineKeyboard
+from tool import language_check, create_inline_keyboard
 
 middleware.start_draw_timer()
 middleware.end_draw_timer()
@@ -40,7 +40,7 @@ def get_on_draw(call):
         else:
             bot.answer_callback_query(callback_query_id=call.id, show_alert=True, text=text['got_on'])
             bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, inline_message_id=call.inline_message_id,
-                                          reply_markup=create_inlineKeyboard({f"({tmp[1]}) {tmp[2]}": call.data}))
+                                          reply_markup=create_inline_keyboard({f"({tmp[1]}) {tmp[2]}": call.data}))
     except:
         pass
 
@@ -56,20 +56,6 @@ def change_language(message):
     else:
         base.update(models.User, {'language': "RU"}, user_id=str(message.chat.id))
         bot.send_message(message.chat.id, language_check(message.chat.id)[1]['menu']['welcome_text'], reply_markup=keyboard.get_menu_keyboard(message.chat.id))
-
-
-# -------------------------------------- # invite # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['menu']['menu_buttons'][3])
-def invite(message):
-    text = language_check(str(message.chat.id))
-    bot.send_message(message.chat.id, text[1]['menu']['invite'])
-
-
-# -------------------------------------- # support # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['menu']['menu_buttons'][4])
-def support(message):
-    text = language_check(str(message.chat.id))
-    bot.send_message(message.chat.id, text[1]['menu']['support'])
 
 
 # -------------------------------------- # back in main menu # -------------------------------------- #
