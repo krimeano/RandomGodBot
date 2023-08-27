@@ -1,8 +1,8 @@
 import telebot
+
 import config
 from base import DataBase
 from fsm import FSM
-
 
 bot = telebot.TeleBot(config.TOKEN)
 fsm_base = DataBase()

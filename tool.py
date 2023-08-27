@@ -1,10 +1,9 @@
 import json
+
 import telebot
+
 import models
 from app import tool_base
-
-
-
 
 file = open("RU.json", encoding="utf-8")
 ru_bot_text = json.load(file)
@@ -41,4 +40,3 @@ def create_inlineKeyboard(key, row=0):
         if list(key.keys())[-1] == i:
             keyboard.add(*[i for i in key_list])
     return keyboard
-
