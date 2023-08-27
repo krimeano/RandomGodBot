@@ -63,6 +63,7 @@ def my_draw_info(user_id, row=0):
     all_draws = not_posted + posted
     if len(all_draws) == 0:
         bot.send_message(user_id, text['no_draw'])
+        return
 
     if row >= len(all_draws):
         print('notttt')
