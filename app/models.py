@@ -20,7 +20,7 @@ class User(Base):
 
     def __init__(self, user_id, user_name, language):
         self.user_id = user_id
-        self.user_name = user_name,
+        self.user_name = user_name
         self.language = language
 
     def __repr__(self):

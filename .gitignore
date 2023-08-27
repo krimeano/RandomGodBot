@@ -2,3 +2,4 @@
 *.iml
 
 app/config.py
+app/bot-data.db
