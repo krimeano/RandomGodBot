@@ -26,3 +26,10 @@ def back_button(user_id):
     back_buttons = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     back_buttons.row(buttons)
     return back_buttons
+
+
+def back_in_menu_button(user_id):
+    text = language_check(user_id)[1]['draw']
+    buttons = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+    buttons.row(text['back_in_menu'])
+    return buttons

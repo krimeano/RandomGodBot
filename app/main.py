@@ -7,6 +7,7 @@ import middleware
 import models
 from app import fsm, bot
 from app import main_base as base
+from config import password
 from middleware import keyboard
 from tool import language_check, create_inline_keyboard
 
@@ -129,18 +130,53 @@ def submit(message):
 
 # -------------------------------------- # enter_id # -------------------------------------- #
 @bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['menu']['menu_buttons'][0])
+def ask_password_before_new_raffle(message):
+    fsm.set_state(message.chat.id, "ask_password.writing_channel_id")
+
+    bot.send_message(
+        message.chat.id,
+        "Для продолжения введите пароль:",
+        protect_content=True,
+        reply_markup=keyboard.back_in_menu_button(message.chat.id)
+    )
+
+
+@bot.message_handler(func=lambda message: True and fsm.get_state(message.chat.id)[0].startswith('ask_password.'))
+def handle_password(message):
+    bot.delete_message(message.chat.id, message.id)
+
+    if message.text != password:
+        bot.send_message(
+            message.chat.id,
+            "Пароль неверен."
+        )
+        back_in_menu(message)
+        return
+
+    state = fsm.get_state(message.chat.id)[0].split('.').pop()
+
+    bot.send_message(
+        message.chat.id,
+        "Пароль введен правильно."
+    )
+
+    if state == 'new_raffle':
+        enter_id(message)
+
+
+@bot.message_handler(func=lambda message: True and fsm.get_state(message.chat.id)[0] == 'new_raffle')
 def enter_id(message):
     base.delete(models.DrawProgress, user_id=(str(message.chat.id)))
     base.delete(models.SubscribeChannel, user_id=(str(message.chat.id)))
     text = language_check(str(message.chat.id))[1]['draw']
     back_button = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     back_button.row(text['back_in_menu'])
-    fsm.set_state(message.chat.id, "writting_channel_id")
+    fsm.set_state(message.chat.id, "writing_channel_id")
     bot.send_message(message.chat.id, text['chanel_id'], reply_markup=back_button)
 
 
 # -------------------------------------- # enter_text # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and fsm.get_state(message.chat.id)[0] == 'writting_channel_id')
+@bot.message_handler(func=lambda message: True and fsm.get_state(message.chat.id)[0] == 'writing_channel_id')
 def enter_text(message):
     status = ['creator', 'administrator']
     text = language_check(str(message.chat.id))[1]['draw']
@@ -156,12 +192,12 @@ def enter_text(message):
     except:
         bot.send_message(message.chat.id, text['not_in_chanel'], reply_markup=back_button)
         return ''
-    fsm.set_state(message.chat.id, "writting_text", chanel_id=message.text, chanel_name=tmp.chat.title)
+    fsm.set_state(message.chat.id, "writing_text", chanel_id=message.text, chanel_name=tmp.chat.title)
     bot.send_message(message.chat.id, text['draw_text'], reply_markup=back_button)
 
 
-# -------------------------------------- # writting_text # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and fsm.get_state(message.chat.id)[0] == 'writting_text')
+# -------------------------------------- # writing_text # -------------------------------------- #
+@bot.message_handler(func=lambda message: True and fsm.get_state(message.chat.id)[0] == 'writing_text')
 def enter_photo(message):
     text = language_check(str(message.chat.id))[1]['draw']
     back_button = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
