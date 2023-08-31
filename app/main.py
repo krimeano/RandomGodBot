@@ -131,7 +131,7 @@ def submit(message):
 # -------------------------------------- # enter_id # -------------------------------------- #
 @bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['menu']['menu_buttons'][0])
 def ask_password_before_new_raffle(message):
-    fsm.set_state(message.chat.id, "ask_password.writing_channel_id")
+    fsm.set_state(message.chat.id, "ask_password.new_raffle")
 
     bot.send_message(
         message.chat.id,
@@ -155,6 +155,8 @@ def handle_password(message):
 
     state = fsm.get_state(message.chat.id)[0].split('.').pop()
 
+    fsm.set_state(message.chat.id, state)
+
     bot.send_message(
         message.chat.id,
         "Пароль введен правильно."
@@ -162,6 +164,8 @@ def handle_password(message):
 
     if state == 'new_raffle':
         enter_id(message)
+    else:
+        print('unknown new state', state)
 
 
 @bot.message_handler(func=lambda message: True and fsm.get_state(message.chat.id)[0] == 'new_raffle')
