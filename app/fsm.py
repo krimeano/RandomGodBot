@@ -16,6 +16,12 @@ class FSM:
         tmp = self.base.select_all(models.State, user_id=user_id)
         if tmp:
             arg = pickle.loads(tmp[0].arg)
-            return (tmp[0].state, arg)
+            return tmp[0].state, arg
         else:
-            return ("idle", [])
+            return "idle", []
+
+    def get_state_key(self, user_id):
+        return self.get_state(user_id)[0]
+
+    def get_state_arg(self, user_id):
+        return self.get_state(user_id)[1]

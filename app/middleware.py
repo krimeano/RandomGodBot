@@ -19,8 +19,10 @@ def check_user(user_id):
 
 def create_draw_progress(user_id, tmp):
     middleware_base.delete(models.DrawProgress, user_id=(str(user_id)))
-    middleware_base.new(models.DrawProgress, str(user_id), tmp['chanel_id'], tmp['chanel_name'], tmp['draw_text'], tmp['file_type'], tmp['file_id'], int(tmp['winners_count']),
-                        tmp['start_time'], tmp['end_time'])
+    middleware_base.new(
+        models.DrawProgress,
+        str(user_id), tmp['chanel_id'], tmp['chanel_name'], tmp['draw_text'], tmp['file_type'], tmp['file_id'], int(tmp['winners_count']), tmp['start_time'], tmp['end_time']
+    )
     middleware_base.delete(models.State, user_id=str(user_id))
 
     return draw_info(user_id)
@@ -67,6 +69,7 @@ def my_draw_info(user_id, row=0):
 
     if row >= len(all_draws):
         print('notttt')
+        return 'last'  # @todo not sure
 
     draw_text = f"{text['your_draw']}\n{text['post_time_text']} {all_draws[row].post_time}\n{text['over_time_text']} {all_draws[row].end_time}\n{text['chanel/chat']} {all_draws[row].chanel_name}\n{text['count_text']} {all_draws[row].winners_count}\n{text['text']} {all_draws[row].text}"
     keyboard_markup = create_inline_keyboard({text['back']: "back", text['next']: "next"}, 2)
@@ -144,12 +147,13 @@ def new_player(call):
     player_id = int(call.data.split('_')[1])
     tmp = middleware_base.get_one(models.Draw, id=player_id)
     chanel = middleware_base.select_all(models.SubscribeChannel, draw_id=tmp.id)
-    status = ['left', 'kicked', 'restricted', 'member', 'admini', 'creator']
+    status = ['left', 'kicked', 'restricted', 'member', 'administrator', 'creator']
     for i in chanel:
         if bot.get_chat_member(chat_id=i.channel_id, user_id=call.from_user.id).status in status:
-            return 'not_subscribe'
+            return 'not_subscribed'  # @todo different return signature
 
     players = middleware_base.get_one(models.DrawPlayer, draw_id=str(tmp.id), user_id=str(call.from_user.id))
+
     if players is None:
         middleware_base.new(models.DrawPlayer, tmp.id, str(call.from_user.id), str(call.from_user.username))
         tmz = middleware_base.select_all(models.DrawPlayer, draw_id=tmp.id)

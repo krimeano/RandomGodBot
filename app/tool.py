@@ -8,7 +8,7 @@ from app import tool_base
 file = open("lang/RU.json", encoding="utf-8")
 ru_bot_text = json.load(file)
 
-file = open("lang/ENG.json", encoding="utf-8")
+file = open("lang/EN.json", encoding="utf-8")
 eng_bot_text = json.load(file)
 
 
