@@ -1,6 +1,8 @@
 import time
 from datetime import datetime
 
+import telebot.types
+
 import bot_lib
 import middleware
 import models
@@ -132,20 +134,38 @@ def submit(message):
     base.delete(models.State, user_id=(str(message.chat.id)))
 
 
-# -------------------------------------- # enter_id # -------------------------------------- #
 @bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['menu']['menu_buttons'][0])
-def ask_password_before_new_raffle(message):
+def ask_password_before_new_raffle(message: telebot.types.Message):
+    ask_password(message, 'new_raffle')
+
+
+@bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['menu']['menu_buttons'][3])
+def ask_password_before_add_my_channel(message: telebot.types.Message):
+    ask_password(message, 'add_my_channel')
+
+
+@bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['menu']['menu_buttons'][4])
+def ask_password_before_my_channels(message: telebot.types.Message):
+    ask_password(message, 'my_channels')
+
+
+def ask_password(message: telebot.types.Message, set_state: str):
     if not password:
-        return enter_id(message)
-
-    fsm.set_state(message.chat.id, "ask_password.new_raffle")
-
-    bot_lib.send_with_back_to_menu(message.chat.id, "Для продолжения введите пароль:")  # @todo l10n
+        fsm.set_state(message.chat.id, set_state)
+        proceed_to_state(message, set_state)
+    else:
+        ask_message = bot_lib.send_with_back_to_menu(message.chat.id, "Для продолжения введите пароль:")  # @todo l10n
+        fsm.set_state(message.chat.id, '.'.join(["ask_password", set_state]), ask_message_id=ask_message.id)
 
 
 @bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id).startswith('ask_password.'))
-def handle_password(message):
+def handle_password(message: telebot.types.Message):
     bot.delete_message(message.chat.id, message.id)
+
+    tmp = fsm.get_state_arg(message.chat.id)
+
+    if 'ask_message_id' in tmp:
+        bot.delete_message(message.chat.id, tmp['ask_message_id'])
 
     if message.text != password:
         bot_lib.send_temporary(message.chat.id, 'Пароль неверен')
@@ -158,12 +178,24 @@ def handle_password(message):
 
     bot_lib.send_temporary(message.chat.id, 'Пароль введен правильно')
 
+    proceed_to_state(message, state)
+
+
+def proceed_to_state(message: telebot.types.Message, state: str):
     if state == 'new_raffle':
-        enter_id(message)
-    else:
-        print('unknown new state', state)
+        return enter_id(message)
+
+    if state == 'add_my_channel':
+        return add_my_channel(message)
+
+    if state == 'my_channels':
+        return my_channels(message)
+
+    print('unknown new state', state)
+    back_in_menu(message)
 
 
+# -------------------------------------- # enter_id # -------------------------------------- #
 @bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'new_raffle')
 def enter_id(message):
     base.delete(models.DrawProgress, user_id=(str(message.chat.id)))
@@ -438,6 +470,16 @@ def add_check_channel(message):
     base.new(models.SubscribeChannel, tmp.id, str(message.chat.id), message.text)
     middleware.send_draw_info(message.chat.id)
     print(base.select_all(models.SubscribeChannel))
+
+
+@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'add_my_channel')
+def add_my_channel(message):
+    bot_lib.send_with_back_to_menu(message.chat.id, 'Тут добавлю мой канал')
+
+
+@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'my_channels')
+def my_channels(message):
+    bot_lib.send_with_back_to_menu(message.chat.id, 'Тут будет список моих каналов')
 
 
 if __name__ == '__main__':

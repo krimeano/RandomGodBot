@@ -1,5 +1,7 @@
 from time import strptime
 
+import telebot.types
+
 from app import bot
 from middleware import keyboard
 from tool import language_check
@@ -9,8 +11,8 @@ def send_with_back(chat_id: int | str, text: str):
     bot.send_message(chat_id, text, reply_markup=keyboard.back_button(chat_id))
 
 
-def send_with_back_to_menu(chat_id: int | str, text: str):
-    bot.send_message(chat_id, text, reply_markup=keyboard.back_in_menu_button(chat_id))
+def send_with_back_to_menu(chat_id: int | str, text: str) -> telebot.types.Message:
+    return bot.send_message(chat_id, text, reply_markup=keyboard.back_in_menu_button(chat_id))
 
 
 def send_welcome(chat_id: int | str):
