@@ -164,19 +164,17 @@ def new_player(call):
         return False
 
 
-def find_my_channels(user_id) -> list[models.MyChannel]:
-    print('find_my_channels', user_id)
-    return middleware_base.select_all(models.MyChannel, user_id=str(user_id))
-
-
-def render_my_channels_inline_keyboard(user_id: int, channels: list[models.MyChannel]) -> telebot.types.InlineKeyboardMarkup:
+def render_my_channels_inline_keyboard(user_id: int) -> telebot.types.InlineKeyboardMarkup:
     voc = get_vocabulary(user_id)
+    channels = middleware_base.select_all(models.MyChannel, user_id=str(user_id))
 
     values = dict()
 
     for x in channels:
-        values[x.chanel_name or x.chanel_id] = {'callback_data': 'my_channels.edit.{0}'.format(x.id)}
+        values[x.chanel_name or x.chanel_id] = {'callback_data': 'my_channels.view.{0}'.format(x.id)}
+        values['Удалить #{0}'.format(x.id)] = {'callback_data': 'my_channels.delete.{0}'.format(x.id)}
 
     values[voc['my_channels']['add_new']] = {'callback_data': 'my_channels.add_new'}
+    values['Закрыть'] = {'callback_data': 'close'}
 
-    return telebot.util.quick_markup(values, row_width=1)
+    return telebot.util.quick_markup(values, row_width=2)

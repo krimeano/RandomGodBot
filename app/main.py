@@ -67,6 +67,12 @@ def change_language(message):
 
 
 # -------------------------------------- # back in main menu # -------------------------------------- #
+@bot.callback_query_handler(func=lambda call: call.data == 'close')
+def handle_close(call: telebot.types.CallbackQuery):
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+    back_in_menu(call.message)
+
+
 @bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['back_in_menu'])
 def back_in_menu(message):
     base.delete(models.State, user_id=str(message.chat.id))
@@ -467,9 +473,8 @@ def add_check_channel(message):
 ######## My Channels
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'my_channels')
 def my_channels(message: telebot.types.Message):
-    channels = middleware.find_my_channels(message.chat.id)
     text = get_vocabulary(message.chat.id)['menu_buttons']['my_channels']
-    buttons = middleware.render_my_channels_inline_keyboard(message.chat.id, channels)
+    buttons = middleware.render_my_channels_inline_keyboard(message.chat.id)
     bot.send_message(message.chat.id, text, reply_markup=buttons)
 
 
@@ -482,11 +487,33 @@ def handle_my_channels_add_new(call: telebot.types.CallbackQuery):
 
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'my_channels.add_new')
 def handle_my_channels_add_new_entered(message: telebot.types.Message):
-    my_channel = base.new(models.MyChannel, message.chat.id, message.text, '')
-    print(my_channel)
-    fsm.set_state(message.chat.id, 'my_channels')
-    bot.send_message(message.chat.id, 'Канал добавлен!')
-    my_channels(message)
+    try:
+        chat = bot.get_chat(message.text)
+        base.new(models.MyChannel, message.chat.id, message.text, chat.title)
+        fsm.set_state(message.chat.id, 'my_channels')
+        bot.send_message(message.chat.id, 'Канал добавлен!')
+        my_channels(message)
+    except Exception as exception:
+        print('EXCEPT', 'handle_my_channels_add_new_entered', str(exception))
+        bot_lib.send_with_back_to_menu(message.chat.id, 'Не могу получить данные канала')
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('my_channels.view.'))
+def handle_my_channels_view(call: telebot.types.CallbackQuery):
+    record_id = int(call.data.split('.').pop())
+    my_channel = base.get_one(models.MyChannel, id=record_id)
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+    text = 'Канал "{0}"\n id: {1}'.format(my_channel.chanel_name, my_channel.chanel_id)
+    bot_lib.send_with_back_to_menu(call.message.chat.id, str(my_channel))
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('my_channels.delete.'))
+def handle_my_channels_delete(call: telebot.types.CallbackQuery):
+    record_id = int(call.data.split('.').pop())
+    base.delete(models.MyChannel, id=record_id)
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+    bot.answer_callback_query(call.id, 'Канал удален', False)
+    my_channels(call.message)
 
 
 if __name__ == '__main__':
