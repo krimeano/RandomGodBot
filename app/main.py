@@ -10,7 +10,7 @@ from app import fsm, bot
 from app import main_base as base
 from config import password
 from middleware import keyboard
-from tool import language_check, create_inline_keyboard
+from tool import language_check, create_inline_keyboard, get_vocabulary
 
 middleware.start_draw_timer()
 middleware.end_draw_timer()
@@ -22,9 +22,9 @@ def start(message):
     base.delete(models.State, user_id=message.chat.id)
 
     if message.chat.type == 'private':
-        text = language_check(message.chat.id)
+        stored,_ = language_check(message.chat.id)
 
-        if not text[0]:
+        if not stored:
             base.new(models.User, str(message.chat.id), str(message.chat.username), "RU")
 
         bot_lib.send_welcome(message.chat.id)
@@ -33,7 +33,7 @@ def start(message):
 @bot.callback_query_handler(func=lambda call: True and call.data.split('_')[0] == 'geton')
 def get_on_draw(call):
     try:
-        text = language_check(call.message.chat.id)[1]['draw']
+        text = get_vocabulary(call.message.chat.id)['draw']
         tmp = middleware.new_player(call)
 
         if tmp[1] == 'not_subscribed':
@@ -52,7 +52,7 @@ def get_on_draw(call):
 
 # language checkers
 # -------------------------------------- # change language # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['menu']['menu_buttons'][2])
+@bot.message_handler(func=lambda message: True and message.text == get_vocabulary(message.chat.id)['menu_buttons']['toggle_language'])
 def change_language(message):
     user = base.get_one(models.User, user_id=str(message.chat.id))
 
@@ -67,7 +67,7 @@ def change_language(message):
 
 
 # -------------------------------------- # back in main menu # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['draw']['back_in_menu'])
+@bot.message_handler(func=lambda message: True and message.text == get_vocabulary(message.chat.id)['back_in_menu'])
 def back_in_menu(message):
     base.delete(models.State, user_id=str(message.chat.id))
     base.delete(models.DrawProgress, user_id=(str(message.chat.id)))
@@ -77,14 +77,14 @@ def back_in_menu(message):
 
 
 # -------------------------------------- # back in draw menu # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['draw']['back'] and middleware.check_post(message.chat.id))
+@bot.message_handler(func=lambda message: True and message.text == get_vocabulary(message.chat.id)['draw']['back'] and middleware.check_post(message.chat.id))
 def back_in_draw_menu(message):
     base.delete(models.State, user_id=str(message.chat.id))
     middleware.send_draw_info(message.chat.id)
 
 
 # -------------------------------------- # back in draw menu # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['menu']['menu_buttons'][1])
+@bot.message_handler(func=lambda message: True and message.text == get_vocabulary(message.chat.id)['menu_buttons']['my_draws'])
 def my_draws(message):
     middleware.my_draw_info(message.chat.id)
     fsm.set_state(message.chat.id, 'my_draws', number=0)
@@ -102,7 +102,7 @@ def handle_back(call):
 
 def handle_move(call, step=1):
     try:
-        text = language_check(call.message.chat.id)[1]['my_draw']
+        text = get_vocabulary(call.message.chat.id)['my_draw']
         row = int(fsm.get_state_arg(call.message.chat.id)['number']) + step
         tmp = middleware.my_draw_info(call.message.chat.id, row=row)
 
@@ -124,7 +124,7 @@ def handle_move(call, step=1):
 
 ############################################ draw func #################################################
 # -------------------------------------- # submit # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == language_check(message.chat.id)[1]['draw']['draw_buttons'][-2])
+@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][6])
 def submit(message):
     text = language_check(message.chat.id)
     bot.send_message(message.chat.id, text[1]['draw']['submit_text'], reply_markup=keyboard.get_menu_keyboard(message.chat.id))
@@ -134,17 +134,12 @@ def submit(message):
     base.delete(models.State, user_id=(str(message.chat.id)))
 
 
-@bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['menu']['menu_buttons'][0])
+@bot.message_handler(func=lambda message: True and message.text == get_vocabulary(message.chat.id)['menu_buttons']['create_draw'])
 def ask_password_before_new_raffle(message: telebot.types.Message):
     ask_password(message, 'new_raffle')
 
 
-@bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['menu']['menu_buttons'][3])
-def ask_password_before_add_my_channel(message: telebot.types.Message):
-    ask_password(message, 'add_my_channel')
-
-
-@bot.message_handler(func=lambda message: True and message.text == language_check(message.chat.id)[1]['menu']['menu_buttons'][4])
+@bot.message_handler(func=lambda message: True and message.text == get_vocabulary(message.chat.id)['menu_buttons']['my_channels'])
 def ask_password_before_my_channels(message: telebot.types.Message):
     ask_password(message, 'my_channels')
 
@@ -201,7 +196,7 @@ def enter_id(message):
     base.delete(models.DrawProgress, user_id=(str(message.chat.id)))
     base.delete(models.SubscribeChannel, user_id=(str(message.chat.id)))
 
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, "writing_channel_id")
 
     bot_lib.send_with_back_to_menu(message.chat.id, text['chanel_id'])
@@ -211,7 +206,7 @@ def enter_id(message):
 @bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'writing_channel_id')
 def enter_text(message):
     status = ['creator', 'administrator']
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
 
     try:
         if str(bot.get_chat_member(chat_id=message.text, user_id=message.from_user.id).status) not in status:
@@ -231,7 +226,7 @@ def enter_text(message):
 # -------------------------------------- # writing_text # -------------------------------------- #
 @bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'writing_text')
 def enter_photo(message):
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
     tmp = fsm.get_state_arg(message.chat.id)
     fsm.set_state(message.chat.id, "enter_photo", chanel_id=tmp['chanel_id'], chanel_name=tmp['chanel_name'], draw_text=message.text)
 
@@ -244,7 +239,7 @@ def enter_photo(message):
     file_id = ''
     file_type = 'text'
 
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
 
     tmp = fsm.get_state_arg(message.chat.id)
     if message.content_type == 'photo':
@@ -262,7 +257,7 @@ def enter_photo(message):
 # -------------------------------------- # enter_winners_count # -------------------------------------- #
 @bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'enter_winners_count')
 def enter_winners_count(message):
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
 
     if not bot_lib.is_integer(message.text):
         bot.send_message(message.chat.id, text['not_int'])
@@ -279,7 +274,7 @@ def enter_winners_count(message):
 # -------------------------------------- # enter_start_time # -------------------------------------- #
 @bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'enter_start_time')
 def enter_start_time(message):
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
 
     if not bot_lib.is_valid_date_format(message.text):
         bot.send_message(message.chat.id, text['invalid_format_time'])
@@ -299,7 +294,7 @@ def enter_start_time(message):
 # -------------------------------------- # enter_end_time # -------------------------------------- #
 @bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'enter_end_time')
 def enter_end_time(message):
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
 
     if not bot_lib.is_valid_date_format(message.text):
         bot.send_message(message.chat.id, text['invalid_format_time'])
@@ -331,16 +326,16 @@ def enter_end_time(message):
 
 
 # -------------------------------------- # change start time # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == language_check(message.chat.id)[1]['draw']['draw_buttons'][0])
+@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][0])
 def change_start_time(message):
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, 'change_post_time')
     bot_lib.send_with_back(message.chat.id, text['post_time'])
 
 
 @bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'change_post_time')
 def confirm_change_start_time(message):
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
 
     if not bot_lib.is_valid_date_format(message.text):
         bot.send_message(message.chat.id, text['invalid_format_time'])
@@ -361,16 +356,16 @@ def confirm_change_start_time(message):
 
 
 # -------------------------------------- # change end time # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == language_check(message.chat.id)[1]['draw']['draw_buttons'][1])
+@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][1])
 def change_end_time(message):
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, 'change_end_time')
     bot_lib.send_with_back(message.chat.id, text['end_time'])
 
 
 @bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'change_end_time')
 def confirm_change_end_time(message):
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
     try:
         print(time.strptime(message.text, '%Y-%m-%d %H:%M'))
     except Exception as exception:
@@ -392,9 +387,9 @@ def confirm_change_end_time(message):
 
 
 # -------------------------------------- # change winners count # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == language_check(message.chat.id)[1]['draw']['draw_buttons'][2])
+@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][2])
 def change_winners_count(message):
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, 'change_winners_count')
     bot_lib.send_with_back(message.chat.id, text['winners_count'])
 
@@ -402,7 +397,7 @@ def change_winners_count(message):
 @bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'change_winners_count')
 def confirm_change_wines_count(message):
     if not bot_lib.is_integer(message.text):
-        bot.send_message(message.chat.id, language_check(message.chat.id)[1]['draw']['not_int'])
+        bot.send_message(message.chat.id, get_vocabulary(message.chat.id)['draw']['not_int'])
         return 'gg'
 
     base.update(models.DrawProgress, {'winners_count': message.text}, user_id=str(message.chat.id))
@@ -410,9 +405,9 @@ def confirm_change_wines_count(message):
 
 
 # -------------------------------------- # change text # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == language_check(message.chat.id)[1]['draw']['draw_buttons'][3])
+@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][3])
 def change_text(message):
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, 'change_draw_text')
     bot_lib.send_with_back(message.chat.id, text['draw_text'])
 
@@ -424,9 +419,9 @@ def confirm_change_draw_text(message):
 
 
 # -------------------------------------- # change photo # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == language_check(message.chat.id)[1]['draw']['draw_buttons'][4])
+@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][4])
 def change_photo(message):
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, 'change_draw_photo')
     bot_lib.send_with_back(message.chat.id, text['file'])
 
@@ -447,16 +442,16 @@ def confirm_change_draw_photo(message):
 
 
 # -------------------------------------- # add channel check # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == language_check(message.chat.id)[1]['draw']['draw_buttons'][5])
+@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][5])
 def add_chanel(message):
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, 'add_check_channel')
     bot_lib.send_with_back(message.chat.id, text['chanel_id_check'])
 
 
 @bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'add_check_channel')
 def add_check_channel(message):
-    text = language_check(message.chat.id)[1]['draw']
+    text = get_vocabulary(message.chat.id)['draw']
     try:
         status = ['creator', 'administrator']
         if str(bot.get_chat_member(chat_id=message.text, user_id=message.from_user.id).status) not in status:
@@ -472,14 +467,18 @@ def add_check_channel(message):
     print(base.select_all(models.SubscribeChannel))
 
 
+######## My Channels
 @bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'add_my_channel')
 def add_my_channel(message):
     bot_lib.send_with_back_to_menu(message.chat.id, 'Тут добавлю мой канал')
 
 
 @bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'my_channels')
-def my_channels(message):
-    bot_lib.send_with_back_to_menu(message.chat.id, 'Тут будет список моих каналов')
+def my_channels(message: telebot.types.Message):
+    channels = middleware.find_my_channels(message.chat.id)
+    text = middleware.render_my_channels(channels)
+    buttons = keyboard.my_channels_buttons(message.chat.id)
+    bot.send_message(message.chat.id, text, reply_markup=buttons)
 
 
 if __name__ == '__main__':

@@ -12,8 +12,13 @@ file = open("lang/EN.json", encoding="utf-8")
 eng_bot_text = json.load(file)
 
 
+def get_vocabulary(user_id) -> dict:
+    _, voc = language_check(user_id)
+    return voc
+
+
 # ----Подгружаем файл с текстами ответов бота----
-def language_check(user_id):
+def language_check(user_id) -> (bool, dict):
     language = tool_base.get_one(models.User, user_id=str(user_id))
     if language is None:
         return False, ru_bot_text

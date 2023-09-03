@@ -160,3 +160,15 @@ def new_player(call):
         return len(tmz), language_check(tmp.user_id)[1]['draw']['play']
     else:
         return False
+
+
+def find_my_channels(user_id) -> list[(str, str)]:
+    print('find_my_channels', user_id)
+    return [
+        ('lorem', 'ipsum'),
+        ('dolor', 'sit'),
+    ]
+
+
+def render_my_channels(channels: list[tuple]) -> str:
+    return '\n'.join("{0}: [{2}]:({1})".format(ix + 1, *channels[ix]) for ix in range(len(channels)))

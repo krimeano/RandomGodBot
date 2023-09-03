@@ -1,16 +1,13 @@
 {
-  "menu": {
-    "welcome_text": "👋Hi!\n The God of random will help you create a giveaway on the channel.\n Are you ready to create a new giveaway?",
-    "menu_buttons": [
-      "Create giveaway 🎁",
-      "My giveaways 🎉",
-      "Сменить язык 🇷🇺",
-      "Add channel 🎙️",
-      "My channels 📻"
-    ]
+  "welcome_text": "👋Hi!\n The God of random will help you create a giveaway on the channel.\n Are you ready to create a new giveaway?",
+  "menu_buttons": {
+    "create_draw": "Create giveaway 🎁",
+    "my_draws": "My giveaways 🎉",
+    "my_channels": "My channels 📻",
+    "toggle_language": "Сменить язык 🇷🇺"
   },
+  "back_in_menu": "To main menu ↩️",
   "draw": {
-    "back_in_menu": "Back in menu ↩️",
     "back": "Back ↩️",
     "draw_buttons": [
       "Change start time ⏳",
@@ -20,7 +17,7 @@
       "Change photo/gif 🖼",
       "Check subscription ✅",
       "Publish 🎲",
-      "Back in menu ↩️"
+      "To main menu ↩️"
     ],
     "chanel_id": "Enter the username of the channel where the giveaway will be published in @username format.  You must be the administrator of this channel and add bot to the administrators.\n If the channel is private, then you need to send the id of this channel to find out the id of the private channel, forward any post from this channel to the special bot @getmyid_bot, the bottom line is the response from the bot and will be the id of your private channel.  Forward this id to the bot",
     "chanel_id_check": "Enter the username of the channel for verification in @username format.\n \n If the channel is private, then you need to send the id of this channel to find out the id of the private channel, forward any post from this channel to the special bot @getmyid_bot, the bottom line is the response from the bot and will be the id of your private channel.  Forward this id to the bot.\n Indicate the link to this channel in the description so that the participants of the giveaway know which channels you need to subscribe",
@@ -64,5 +61,9 @@
     "over_time_text": "Time of end:",
     "next": "Next",
     "back": "Back"
+  },
+  "my_channels": {
+    "add_new": "Add channel ➕",
+    "delete": "Delete channel ➖"
   }
 }

@@ -4,7 +4,7 @@ import telebot.types
 
 from app import bot
 from middleware import keyboard
-from tool import language_check
+from tool import get_vocabulary
 
 
 def send_with_back(chat_id: int | str, text: str):
@@ -16,7 +16,7 @@ def send_with_back_to_menu(chat_id: int | str, text: str) -> telebot.types.Messa
 
 
 def send_welcome(chat_id: int | str):
-    bot.send_message(chat_id, language_check(chat_id)[1]['menu']['welcome_text'], reply_markup=keyboard.get_menu_keyboard(chat_id))
+    bot.send_message(chat_id, get_vocabulary(chat_id)['welcome_text'], reply_markup=keyboard.get_menu_keyboard(chat_id))
 
 
 def send_temporary(chat_id: int | str, text: str, timeout=15):
