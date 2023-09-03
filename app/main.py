@@ -22,7 +22,7 @@ def start(message):
     base.delete(models.State, user_id=message.chat.id)
 
     if message.chat.type == 'private':
-        stored,_ = language_check(message.chat.id)
+        stored, _ = language_check(message.chat.id)
 
         if not stored:
             base.new(models.User, str(message.chat.id), str(message.chat.username), "RU")
@@ -30,7 +30,7 @@ def start(message):
         bot_lib.send_welcome(message.chat.id)
 
 
-@bot.callback_query_handler(func=lambda call: True and call.data.split('_')[0] == 'geton')
+@bot.callback_query_handler(func=lambda call: call.data.split('_')[0] == 'geton')
 def get_on_draw(call):
     try:
         text = get_vocabulary(call.message.chat.id)['draw']
@@ -52,7 +52,7 @@ def get_on_draw(call):
 
 # language checkers
 # -------------------------------------- # change language # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and message.text == get_vocabulary(message.chat.id)['menu_buttons']['toggle_language'])
+@bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['menu_buttons']['toggle_language'])
 def change_language(message):
     user = base.get_one(models.User, user_id=str(message.chat.id))
 
@@ -67,7 +67,7 @@ def change_language(message):
 
 
 # -------------------------------------- # back in main menu # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and message.text == get_vocabulary(message.chat.id)['back_in_menu'])
+@bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['back_in_menu'])
 def back_in_menu(message):
     base.delete(models.State, user_id=str(message.chat.id))
     base.delete(models.DrawProgress, user_id=(str(message.chat.id)))
@@ -77,25 +77,25 @@ def back_in_menu(message):
 
 
 # -------------------------------------- # back in draw menu # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and message.text == get_vocabulary(message.chat.id)['draw']['back'] and middleware.check_post(message.chat.id))
+@bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['draw']['back'] and middleware.check_post(message.chat.id))
 def back_in_draw_menu(message):
     base.delete(models.State, user_id=str(message.chat.id))
     middleware.send_draw_info(message.chat.id)
 
 
 # -------------------------------------- # back in draw menu # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and message.text == get_vocabulary(message.chat.id)['menu_buttons']['my_draws'])
+@bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['menu_buttons']['my_draws'])
 def my_draws(message):
     middleware.my_draw_info(message.chat.id)
     fsm.set_state(message.chat.id, 'my_draws', number=0)
 
 
-@bot.callback_query_handler(func=lambda call: True and call.data == 'next')
+@bot.callback_query_handler(func=lambda call: call.data == 'next')
 def handle_next(call):
     handle_move(call)
 
 
-@bot.callback_query_handler(func=lambda call: True and call.data == 'back')
+@bot.callback_query_handler(func=lambda call: call.data == 'back')
 def handle_back(call):
     handle_move(call, -1)
 
@@ -124,7 +124,7 @@ def handle_move(call, step=1):
 
 ############################################ draw func #################################################
 # -------------------------------------- # submit # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][6])
+@bot.message_handler(func=lambda message: middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][6])
 def submit(message):
     text = language_check(message.chat.id)
     bot.send_message(message.chat.id, text[1]['draw']['submit_text'], reply_markup=keyboard.get_menu_keyboard(message.chat.id))
@@ -134,12 +134,12 @@ def submit(message):
     base.delete(models.State, user_id=(str(message.chat.id)))
 
 
-@bot.message_handler(func=lambda message: True and message.text == get_vocabulary(message.chat.id)['menu_buttons']['create_draw'])
+@bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['menu_buttons']['create_draw'])
 def ask_password_before_new_raffle(message: telebot.types.Message):
     ask_password(message, 'new_raffle')
 
 
-@bot.message_handler(func=lambda message: True and message.text == get_vocabulary(message.chat.id)['menu_buttons']['my_channels'])
+@bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['menu_buttons']['my_channels'])
 def ask_password_before_my_channels(message: telebot.types.Message):
     ask_password(message, 'my_channels')
 
@@ -153,7 +153,7 @@ def ask_password(message: telebot.types.Message, set_state: str):
         fsm.set_state(message.chat.id, '.'.join(["ask_password", set_state]), ask_message_id=ask_message.id)
 
 
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id).startswith('ask_password.'))
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id).startswith('ask_password.'))
 def handle_password(message: telebot.types.Message):
     bot.delete_message(message.chat.id, message.id)
 
@@ -180,9 +180,6 @@ def proceed_to_state(message: telebot.types.Message, state: str):
     if state == 'new_raffle':
         return enter_id(message)
 
-    if state == 'add_my_channel':
-        return add_my_channel(message)
-
     if state == 'my_channels':
         return my_channels(message)
 
@@ -191,7 +188,7 @@ def proceed_to_state(message: telebot.types.Message, state: str):
 
 
 # -------------------------------------- # enter_id # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'new_raffle')
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'new_raffle')
 def enter_id(message):
     base.delete(models.DrawProgress, user_id=(str(message.chat.id)))
     base.delete(models.SubscribeChannel, user_id=(str(message.chat.id)))
@@ -203,7 +200,7 @@ def enter_id(message):
 
 
 # -------------------------------------- # enter_text # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'writing_channel_id')
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'writing_channel_id')
 def enter_text(message):
     status = ['creator', 'administrator']
     text = get_vocabulary(message.chat.id)['draw']
@@ -224,7 +221,7 @@ def enter_text(message):
 
 
 # -------------------------------------- # writing_text # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'writing_text')
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'writing_text')
 def enter_photo(message):
     text = get_vocabulary(message.chat.id)['draw']
     tmp = fsm.get_state_arg(message.chat.id)
@@ -234,7 +231,7 @@ def enter_photo(message):
 
 
 # -------------------------------------- # enter_photo # -------------------------------------- #
-@bot.message_handler(content_types=['text', 'photo', 'document'], func=lambda message: True and fsm.get_state_key(message.chat.id) == 'enter_photo')
+@bot.message_handler(content_types=['text', 'photo', 'document'], func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_photo')
 def enter_photo(message):
     file_id = ''
     file_type = 'text'
@@ -255,7 +252,7 @@ def enter_photo(message):
 
 
 # -------------------------------------- # enter_winners_count # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'enter_winners_count')
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_winners_count')
 def enter_winners_count(message):
     text = get_vocabulary(message.chat.id)['draw']
 
@@ -272,7 +269,7 @@ def enter_winners_count(message):
 
 
 # -------------------------------------- # enter_start_time # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'enter_start_time')
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_start_time')
 def enter_start_time(message):
     text = get_vocabulary(message.chat.id)['draw']
 
@@ -292,7 +289,7 @@ def enter_start_time(message):
 
 
 # -------------------------------------- # enter_end_time # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'enter_end_time')
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_end_time')
 def enter_end_time(message):
     text = get_vocabulary(message.chat.id)['draw']
 
@@ -326,14 +323,14 @@ def enter_end_time(message):
 
 
 # -------------------------------------- # change start time # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][0])
+@bot.message_handler(func=lambda message: middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][0])
 def change_start_time(message):
     text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, 'change_post_time')
     bot_lib.send_with_back(message.chat.id, text['post_time'])
 
 
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'change_post_time')
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'change_post_time')
 def confirm_change_start_time(message):
     text = get_vocabulary(message.chat.id)['draw']
 
@@ -356,14 +353,14 @@ def confirm_change_start_time(message):
 
 
 # -------------------------------------- # change end time # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][1])
+@bot.message_handler(func=lambda message: middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][1])
 def change_end_time(message):
     text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, 'change_end_time')
     bot_lib.send_with_back(message.chat.id, text['end_time'])
 
 
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'change_end_time')
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'change_end_time')
 def confirm_change_end_time(message):
     text = get_vocabulary(message.chat.id)['draw']
     try:
@@ -387,14 +384,14 @@ def confirm_change_end_time(message):
 
 
 # -------------------------------------- # change winners count # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][2])
+@bot.message_handler(func=lambda message: middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][2])
 def change_winners_count(message):
     text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, 'change_winners_count')
     bot_lib.send_with_back(message.chat.id, text['winners_count'])
 
 
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'change_winners_count')
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'change_winners_count')
 def confirm_change_wines_count(message):
     if not bot_lib.is_integer(message.text):
         bot.send_message(message.chat.id, get_vocabulary(message.chat.id)['draw']['not_int'])
@@ -405,28 +402,28 @@ def confirm_change_wines_count(message):
 
 
 # -------------------------------------- # change text # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][3])
+@bot.message_handler(func=lambda message: middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][3])
 def change_text(message):
     text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, 'change_draw_text')
     bot_lib.send_with_back(message.chat.id, text['draw_text'])
 
 
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'change_draw_text')
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'change_draw_text')
 def confirm_change_draw_text(message):
     base.update(models.DrawProgress, {'text': message.text}, user_id=str(message.chat.id))
     middleware.send_draw_info(message.chat.id)
 
 
 # -------------------------------------- # change photo # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][4])
+@bot.message_handler(func=lambda message: middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][4])
 def change_photo(message):
     text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, 'change_draw_photo')
     bot_lib.send_with_back(message.chat.id, text['file'])
 
 
-@bot.message_handler(content_types=['text', 'photo', 'document'], func=lambda message: True and fsm.get_state_key(message.chat.id) == 'change_draw_photo')
+@bot.message_handler(content_types=['text', 'photo', 'document'], func=lambda message: fsm.get_state_key(message.chat.id) == 'change_draw_photo')
 def confirm_change_draw_photo(message):
     file_id = ''
     file_type = 'text'
@@ -442,14 +439,14 @@ def confirm_change_draw_photo(message):
 
 
 # -------------------------------------- # add channel check # -------------------------------------- #
-@bot.message_handler(func=lambda message: True and middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][5])
+@bot.message_handler(func=lambda message: middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][5])
 def add_chanel(message):
     text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, 'add_check_channel')
     bot_lib.send_with_back(message.chat.id, text['chanel_id_check'])
 
 
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'add_check_channel')
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'add_check_channel')
 def add_check_channel(message):
     text = get_vocabulary(message.chat.id)['draw']
     try:
@@ -468,17 +465,28 @@ def add_check_channel(message):
 
 
 ######## My Channels
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'add_my_channel')
-def add_my_channel(message):
-    bot_lib.send_with_back_to_menu(message.chat.id, 'Тут добавлю мой канал')
-
-
-@bot.message_handler(func=lambda message: True and fsm.get_state_key(message.chat.id) == 'my_channels')
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'my_channels')
 def my_channels(message: telebot.types.Message):
     channels = middleware.find_my_channels(message.chat.id)
-    text = middleware.render_my_channels(channels)
-    buttons = keyboard.my_channels_buttons(message.chat.id)
+    text = get_vocabulary(message.chat.id)['menu_buttons']['my_channels']
+    buttons = middleware.render_my_channels_inline_keyboard(message.chat.id, channels)
     bot.send_message(message.chat.id, text, reply_markup=buttons)
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'my_channels.add_new')
+def handle_my_channels_add_new(call: telebot.types.CallbackQuery):
+    fsm.set_state(call.message.chat.id, 'my_channels.add_new')
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+    bot_lib.send_with_back_to_menu(call.message.chat.id, get_vocabulary(call.message.chat.id)['draw']['chanel_id'])
+
+
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'my_channels.add_new')
+def handle_my_channels_add_new_entered(message: telebot.types.Message):
+    my_channel = base.new(models.MyChannel, message.chat.id, message.text, '')
+    print(my_channel)
+    fsm.set_state(message.chat.id, 'my_channels')
+    bot.send_message(message.chat.id, 'Канал добавлен!')
+    my_channels(message)
 
 
 if __name__ == '__main__':

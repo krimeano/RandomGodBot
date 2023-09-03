@@ -3,10 +3,12 @@ import threading
 import time
 from datetime import datetime
 
+import telebot.types
+
 import keyboard
 import models
 from app import middleware_base, bot, post_base, end_base
-from tool import language_check, create_inline_keyboard
+from tool import language_check, create_inline_keyboard, get_vocabulary
 
 
 def check_user(user_id):
@@ -162,13 +164,19 @@ def new_player(call):
         return False
 
 
-def find_my_channels(user_id) -> list[(str, str)]:
+def find_my_channels(user_id) -> list[models.MyChannel]:
     print('find_my_channels', user_id)
-    return [
-        ('lorem', 'ipsum'),
-        ('dolor', 'sit'),
-    ]
+    return middleware_base.select_all(models.MyChannel, user_id=str(user_id))
 
 
-def render_my_channels(channels: list[tuple]) -> str:
-    return '\n'.join("{0}: [{2}]:({1})".format(ix + 1, *channels[ix]) for ix in range(len(channels)))
+def render_my_channels_inline_keyboard(user_id: int, channels: list[models.MyChannel]) -> telebot.types.InlineKeyboardMarkup:
+    voc = get_vocabulary(user_id)
+
+    values = dict()
+
+    for x in channels:
+        values[x.chanel_name or x.chanel_id] = {'callback_data': 'my_channels.edit.{0}'.format(x.id)}
+
+    values[voc['my_channels']['add_new']] = {'callback_data': 'my_channels.add_new'}
+
+    return telebot.util.quick_markup(values, row_width=1)

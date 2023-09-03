@@ -31,8 +31,8 @@ class User(Base):
 class DrawProgress(Base):
     __tablename__ = 'draw_progress'
     id = Column(Integer, primary_key=True)
-    user_id = Column(String)
-    chanel_id = Column(String)
+    user_id = Column(String, index=True)
+    chanel_id = Column(String, index=True)
     chanel_name = Column(String)
     text = Column(String)
     file_type = Column(String)
@@ -69,8 +69,8 @@ class DrawProgress(Base):
 class DrawNot(Base):
     __tablename__ = 'not_posted'
     id = Column(Integer, primary_key=True)
-    user_id = Column(String)
-    chanel_id = Column(String)
+    user_id = Column(String, index=True)
+    chanel_id = Column(String, index=True)
     chanel_name = Column(String)
     text = Column(String)
     file_type = Column(String)
@@ -108,9 +108,9 @@ class DrawNot(Base):
 class Draw(Base):
     __tablename__ = 'draw_'
     id = Column(Integer, primary_key=True)
-    user_id = Column(String)
+    user_id = Column(String, index=True)
     message_id = Column(String)
-    chanel_id = Column(String)
+    chanel_id = Column(String, index=True)
     chanel_name = Column(String)
     text = Column(String)
     file_type = Column(String)
@@ -150,9 +150,9 @@ class Draw(Base):
 class SubscribeChannel(Base):
     __tablename__ = 'channel'
     id = Column(Integer, primary_key=True)
-    draw_id = Column(Integer)
-    user_id = Column(String)
-    channel_id = Column(String)
+    draw_id = Column(Integer, index=True)
+    user_id = Column(String, index=True)
+    channel_id = Column(String, index=True)
 
     def __init__(self, draw_id, user_id, channel_id):
         self.draw_id = draw_id
@@ -167,8 +167,8 @@ class SubscribeChannel(Base):
 class DrawPlayer(Base):
     __tablename__ = 'players'
     id = Column(Integer, primary_key=True)
-    draw_id = Column(Integer)
-    user_id = Column(String)
+    draw_id = Column(Integer, index=True)
+    user_id = Column(String, index=True)
     user_name = Column(String)
 
     def __init__(self, draw_id, user_id, user_name):
@@ -195,3 +195,20 @@ class State(Base):
     def __repr__(self):
         return "<State(user_id='%s', state='%s', arg='%s')>" % (
             self.user_id, self.state, self.arg)
+
+
+class MyChannel(Base):
+    __tablename__ = 'my_channels'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, index=True)
+    chanel_id = Column(String, index=True)
+    chanel_name = Column(String)
+
+    def __init__(self, user_id: int, chanel_id: str, chanel_name=''):
+        self.user_id = user_id
+        self.chanel_id = chanel_id
+        self.chanel_name = chanel_name
+
+    def __repr__(self):
+        return "<MyChannel(id=%s, user_id=%s, chanel_id='%s', chanel_name='%s')>" % (
+            self.id, self.user_id, self.chanel_id, self.chanel_name)
