@@ -202,12 +202,31 @@ def enter_id(message):
     text = get_vocabulary(message.chat.id)['draw']
     fsm.set_state(message.chat.id, "writing_channel_id")
 
-    bot_lib.send_with_back_to_menu(message.chat.id, text['chanel_id'])
+    buttons = middleware.render_choose_my_channel_inline_keyboard(message.chat.id)
+    bot.send_message(message.chat.id, text['choose_chanel_id'], reply_markup=buttons)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('new_raffle.choose_my_channel.'))
+def enter_text(call: telebot.types.CallbackQuery):
+    user_id = call.message.chat.id
+    record_id = int(call.data.split("new_raffle.choose_my_channel.").pop())
+    channel: models.MyChannel = base.get_one(models.MyChannel, id=record_id, user_id=user_id)
+
+    if not channel:
+        bot.send_message(user_id, 'CHANNEL NOT FOUND!')
+        return back_in_menu(call.message)
+
+    bot.delete_message(user_id, call.message.id)
+
+    text = get_vocabulary(user_id)['draw']
+    bot.send_message(user_id, 'Выбран канал {0} "{1}"'.format(channel.chanel_id, channel.chanel_name))
+    fsm.set_state(user_id, "writing_text", chanel_id=channel.chanel_id, chanel_name=channel.chanel_name)
+    bot_lib.send_with_back_to_menu(user_id, text['draw_text'])
 
 
 # -------------------------------------- # enter_text # -------------------------------------- #
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'writing_channel_id')
-def enter_text(message):
+def enter_text_deprecated(message):
     status = ['creator', 'administrator']
     text = get_vocabulary(message.chat.id)['draw']
 

@@ -178,3 +178,16 @@ def render_my_channels_inline_keyboard(user_id: int) -> telebot.types.InlineKeyb
     values['Закрыть'] = {'callback_data': 'close'}
 
     return telebot.util.quick_markup(values, row_width=2)
+
+
+def render_choose_my_channel_inline_keyboard(user_id: int) -> telebot.types.InlineKeyboardMarkup:
+    channels = middleware_base.select_all(models.MyChannel, user_id=str(user_id))
+
+    values = dict()
+
+    for x in channels:
+        values[x.chanel_name or x.chanel_id] = {'callback_data': 'new_raffle.choose_my_channel.{0}'.format(x.id)}
+
+    values['Закрыть'] = {'callback_data': 'close'}
+
+    return telebot.util.quick_markup(values, row_width=1)

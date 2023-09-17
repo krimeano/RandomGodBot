@@ -20,6 +20,7 @@
       "To main menu ↩️"
     ],
     "chanel_id": "Enter the username of the channel where the giveaway will be published in @username format.  You must be the administrator of this channel and add bot to the administrators.\n If the channel is private, then you need to send the id of this channel to find out the id of the private channel, forward any post from this channel to the special bot @getmyid_bot, the bottom line is the response from the bot and will be the id of your private channel.  Forward this id to the bot",
+    "choose_chanel_id": "Choose a channel where to publish the raffle",
     "chanel_id_check": "Enter the username of the channel for verification in @username format.\n \n If the channel is private, then you need to send the id of this channel to find out the id of the private channel, forward any post from this channel to the special bot @getmyid_bot, the bottom line is the response from the bot and will be the id of your private channel.  Forward this id to the bot.\n Indicate the link to this channel in the description so that the participants of the giveaway know which channels you need to subscribe",
     "not_admin": "For publish the giveaway, you must be the administrator of this channel.  Send username as administrator",
     "not_in_chanel": "The bot is not the administrator of this channel.  Add bot to admins and submit @username again",
