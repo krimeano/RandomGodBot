@@ -32,6 +32,13 @@ def is_integer(text: str) -> bool:
         return False
 
 
+def is_int_gt_one(text: str) -> bool:
+    try:
+        return int(text) >= 1
+    except Exception:
+        return False
+
+
 def is_valid_date_format(text: str, f='%Y-%m-%d %H:%M') -> bool:
     try:
         strptime(text, f)

@@ -271,14 +271,88 @@ def enter_photo(message):
         file_id = message.document.file_id
         file_type = 'document'
 
-    fsm.set_state(message.chat.id, "enter_winners_count", chanel_id=tmp['chanel_id'], chanel_name=tmp['chanel_name'], draw_text=tmp['draw_text'], file_type=file_type,
+    fsm.set_state(message.chat.id, "enter_prize_kinds", chanel_id=tmp['chanel_id'], chanel_name=tmp['chanel_name'], draw_text=tmp['draw_text'], file_type=file_type,
                   file_id=file_id)
-    bot_lib.send_with_back_to_menu(message.chat.id, text['winners_count'])
+    bot_lib.send_with_back_to_menu(message.chat.id, text['prize_kinds'])
+
+
+# PRIZE KINDS
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_prize_kinds')
+def handle_prize_kinds(message: telebot.types.Message):
+    user_id = message.chat.id
+    text = get_vocabulary(message.chat.id)['draw']
+
+    if not bot_lib.is_int_gt_one(message.text):
+        bot.send_message(user_id, text['at_least_one'])
+        return
+    prize_kinds = int(message.text)
+    tmp = fsm.get_state_arg(user_id)
+    current_kind_ix = 0
+    prizes = [[0, '', False]] * prize_kinds
+    fsm.set_state(user_id, "enter_prize_kind_winners_count", **tmp, prizes=prizes, current_kind_ix=current_kind_ix)
+    bot_lib.send_with_back_to_menu(user_id, text['prize_kind_winners_count'].format(current_kind_ix + 1))
+
+
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_prize_kind_winners_count')
+def handle_prize_kind_winners_count(message: telebot.types.Message):
+    user_id = message.chat.id
+    text = get_vocabulary(message.chat.id)['draw']
+
+    if not bot_lib.is_int_gt_one(message.text):
+        bot.send_message(user_id, text['at_least_one'])
+        return
+
+    tmp = fsm.get_state_arg(user_id)
+    print('tmp = ', tmp)
+    current_kind_ix = tmp['current_kind_ix']
+    tmp['prizes'][current_kind_ix][0] = int(message.text)
+    print('tmp = ', tmp)
+    fsm.set_state(user_id, "enter_prize_kind_winners_text", **tmp)
+
+    bot_lib.send_with_back_to_menu(user_id, text['prize_kind_winners_text'].format(current_kind_ix + 1))
+
+
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_prize_kind_winners_text')
+def handle_prize_kind_winners_text(message: telebot.types.Message):
+    user_id = message.chat.id
+    text = get_vocabulary(message.chat.id)['draw']
+
+    tmp = fsm.get_state_arg(user_id)
+    print('tmp = ', tmp)
+    current_kind_ix = tmp['current_kind_ix']
+    tmp['prizes'][current_kind_ix][1] = message.text
+    print('tmp = ', tmp)
+    fsm.set_state(user_id, "select_prize_winners_is_random", **tmp)
+
+    buttons = middleware.render_is_random_inline_keyboard(user_id)
+    bot.send_message(message.chat.id, text['prize_kind_winners_is_random'].format(current_kind_ix + 1), reply_markup=buttons)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('new_raffle.is_random.'))
+def handle_prize_kind_winners_is_random(call: telebot.types.CallbackQuery):
+    user_id = call.message.chat.id
+    bot.delete_message(user_id, call.message.id)
+
+    text = get_vocabulary(user_id)['draw']
+
+    tmp = fsm.get_state_arg(user_id)
+    print('tmp = ', tmp)
+    current_kind_ix = tmp['current_kind_ix']
+    tmp['prizes'][current_kind_ix][2] = call.data.split('.').pop() == 'yes'
+    current_kind_ix += 1
+    tmp['current_kind_ix'] = current_kind_ix
+    print('tmp = ', tmp)
+    if current_kind_ix < len(tmp['prizes']):
+        fsm.set_state(user_id, "enter_prize_kind_winners_count", **tmp)
+        bot_lib.send_with_back_to_menu(user_id, text['prize_kind_winners_count'].format(current_kind_ix + 1))
+    else:
+        fsm.set_state(user_id, "enter_start_time", **tmp)
+        bot_lib.send_with_back_to_menu(user_id, text['post_time'])  # @TODO когда опубликовать розыгрыш
 
 
 # -------------------------------------- # enter_winners_count # -------------------------------------- #
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_winners_count')
-def enter_winners_count(message):
+def enter_winners_count(message):  # obsolete
     text = get_vocabulary(message.chat.id)['draw']
 
     if not bot_lib.is_integer(message.text):
@@ -523,7 +597,7 @@ def handle_my_channels_view(call: telebot.types.CallbackQuery):
     my_channel = base.get_one(models.MyChannel, id=record_id)
     bot.delete_message(call.message.chat.id, call.message.message_id)
     text = 'Канал "{0}"\n id: {1}'.format(my_channel.chanel_name, my_channel.chanel_id)
-    bot_lib.send_with_back_to_menu(call.message.chat.id, str(my_channel))
+    bot_lib.send_with_back_to_menu(call.message.chat.id, text)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('my_channels.delete.'))

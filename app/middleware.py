@@ -191,3 +191,11 @@ def render_choose_my_channel_inline_keyboard(user_id: int) -> telebot.types.Inli
     values['Закрыть'] = {'callback_data': 'close'}
 
     return telebot.util.quick_markup(values, row_width=1)
+
+
+def render_is_random_inline_keyboard(user_id: int) -> telebot.types.InlineKeyboardMarkup:
+    values = dict()
+    values['Вручную'] = {'callback_data': 'new_raffle.is_random.no'}
+    values['Автоматически'] = {'callback_data': 'new_raffle.is_random.yes'}
+    values['В главное меню ↩️'] = {'callback_data': 'close'}
+    return telebot.util.quick_markup(values, row_width=2)
