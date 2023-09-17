@@ -288,7 +288,7 @@ def handle_prize_kinds(message: telebot.types.Message):
     prize_kinds = int(message.text)
     tmp = fsm.get_state_arg(user_id)
     current_kind_ix = 0
-    prizes = [[0, '', False]] * prize_kinds
+    prizes = [[0, '', False, []]] * prize_kinds
     fsm.set_state(user_id, "enter_prize_kind_winners_count", **tmp, prizes=prizes, current_kind_ix=current_kind_ix)
     bot_lib.send_with_back_to_menu(user_id, text['prize_kind_winners_count'].format(current_kind_ix + 1))
 
@@ -303,7 +303,6 @@ def handle_prize_kind_winners_count(message: telebot.types.Message):
         return
 
     tmp = fsm.get_state_arg(user_id)
-    print('tmp = ', tmp)
     current_kind_ix = tmp['current_kind_ix']
     tmp['prizes'][current_kind_ix][0] = int(message.text)
     print('tmp = ', tmp)
@@ -318,7 +317,6 @@ def handle_prize_kind_winners_text(message: telebot.types.Message):
     text = get_vocabulary(message.chat.id)['draw']
 
     tmp = fsm.get_state_arg(user_id)
-    print('tmp = ', tmp)
     current_kind_ix = tmp['current_kind_ix']
     tmp['prizes'][current_kind_ix][1] = message.text
     print('tmp = ', tmp)
@@ -336,17 +334,48 @@ def handle_prize_kind_winners_is_random(call: telebot.types.CallbackQuery):
     text = get_vocabulary(user_id)['draw']
 
     tmp = fsm.get_state_arg(user_id)
-    print('tmp = ', tmp)
+
     current_kind_ix = tmp['current_kind_ix']
-    tmp['prizes'][current_kind_ix][2] = call.data.split('.').pop() == 'yes'
+    is_random = call.data.split('.').pop() == 'yes'
+    tmp['prizes'][current_kind_ix][2] = is_random
+
+    if not is_random:
+        fsm.set_state(user_id, "enter_prize_kind_winners_manual", **tmp)
+        bot_lib.send_with_back_to_menu(user_id, text['prize_kind_winners_manual'].format(current_kind_ix + 1, tmp['prizes'][current_kind_ix][0], 1))
+    else:
+        increment_current_kind_ix(user_id, tmp)
+
+
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_prize_kind_winners_manual')
+def handle_prize_kind_winners_manual(message: telebot.types.Message):
+    user_id = message.chat.id
+    text = get_vocabulary(user_id)['draw']
+    tmp = fsm.get_state_arg(user_id)
+    current_kind_ix = tmp['current_kind_ix']
+    winners: list[str] = tmp['prizes'][current_kind_ix][3]
+    winner = message.text.strip()  # @todo проверить что пользователь существует и в чате
+    if winner not in winners:
+        winners.append(winner)
+
+    if len(winners) < tmp['prizes'][current_kind_ix][0]:
+        fsm.set_state(user_id, "enter_prize_kind_winners_manual", **tmp)
+        bot_lib.send_with_back_to_menu(user_id, text['prize_kind_winners_manual'].format(current_kind_ix + 1, tmp['prizes'][current_kind_ix][0], len(winners) + 1))
+    else:
+        increment_current_kind_ix(user_id, tmp)
+
+
+def increment_current_kind_ix(user_id, current_state):
+    text = get_vocabulary(user_id)['draw']
+    current_kind_ix = current_state['current_kind_ix']
     current_kind_ix += 1
-    tmp['current_kind_ix'] = current_kind_ix
-    print('tmp = ', tmp)
-    if current_kind_ix < len(tmp['prizes']):
-        fsm.set_state(user_id, "enter_prize_kind_winners_count", **tmp)
+    current_state['current_kind_ix'] = current_kind_ix
+    print('tmp = ', current_state)
+
+    if current_kind_ix < len(current_state['prizes']):
+        fsm.set_state(user_id, "enter_prize_kind_winners_count", **current_state)
         bot_lib.send_with_back_to_menu(user_id, text['prize_kind_winners_count'].format(current_kind_ix + 1))
     else:
-        fsm.set_state(user_id, "enter_start_time", **tmp)
+        fsm.set_state(user_id, "enter_start_time", **current_state)
         bot_lib.send_with_back_to_menu(user_id, text['post_time'])  # @TODO когда опубликовать розыгрыш
 
 
