@@ -22,10 +22,21 @@ def check_user(user_id):
 
 def create_draw_progress(user_id, tmp):
     middleware_base.delete(models.DrawProgress, user_id=(str(user_id)))
-    middleware_base.new(
+
+    prizes = tmp['prizes']  # [[0, '', False, []]]
+
+    draw = middleware_base.new(
         models.DrawProgress,
-        str(user_id), tmp['chanel_id'], tmp['chanel_name'], tmp['draw_text'], tmp['file_type'], tmp['file_id'], int(tmp['winners_count']), tmp['start_time'], tmp['end_time']
+        str(user_id), tmp['chanel_id'], tmp['chanel_name'], tmp['draw_text'], tmp['file_type'], tmp['file_id'], len(prizes), tmp['start_time'], tmp['end_time']
     )
+
+    for prize in prizes:
+        [winners_count, description, is_manual, preset_winners] = prize
+        middleware_base.new(
+            models.DrawPrize,
+            draw.id, int(winners_count), description, preset_winners
+        )
+
     middleware_base.delete(models.State, user_id=str(user_id))
 
     return draw_info(user_id)
@@ -34,7 +45,7 @@ def create_draw_progress(user_id, tmp):
 def draw_info(user_id):
     tmp = check_post(str(user_id))
     text = language_check(user_id)[1]['draw']
-    return f"{text['change_text']}\n{text['post_time_text']} {tmp.post_time}\n{text['over_time_text']} {tmp.end_time}\n{text['chanel/chat']} {tmp.chanel_name}\n{text['count_text']} {tmp.winners_count}\n{text['text']} {tmp.text}"
+    return f"{text['change_text']}\n{text['post_time_text']} {tmp.post_time}\n{text['over_time_text']} {tmp.end_time}\n{text['chanel/chat']} {tmp.chanel_name}\n{text['count_text']} {tmp.prize_kinds}\n{text['text']} {tmp.text}"
 
 
 def check_post(user_id):
@@ -44,7 +55,7 @@ def check_post(user_id):
 def send_draw_info(user_id):
     tmp = check_post(str(user_id))
     text = language_check(user_id)[1]['draw']
-    draw_text = f"{text['change_text']}\n{text['post_time_text']} {tmp.post_time}\n{text['over_time_text']} {tmp.end_time}\n{text['chanel/chat']} {tmp.chanel_name}\n{text['count_text']} {tmp.winners_count}\n{text['text']} {tmp.text}"
+    draw_text = f"{text['change_text']}\n{text['post_time_text']} {tmp.post_time}\n{text['over_time_text']} {tmp.end_time}\n{text['chanel/chat']} {tmp.chanel_name}\n{text['count_text']} {tmp.prize_kinds}\n{text['text']} {tmp.text}"
 
     if tmp.file_type == 'photo':
         bot.send_photo(user_id, tmp.file_id, draw_text, reply_markup=keyboard.get_draw_keyboard(user_id))
@@ -74,7 +85,7 @@ def my_draw_info(user_id, row=0):
         print('notttt')
         return 'last'  # @todo not sure
 
-    draw_text = f"{text['your_draw']}\n{text['post_time_text']} {all_draws[row].post_time}\n{text['over_time_text']} {all_draws[row].end_time}\n{text['chanel/chat']} {all_draws[row].chanel_name}\n{text['count_text']} {all_draws[row].winners_count}\n{text['text']} {all_draws[row].text}"
+    draw_text = f"{text['your_draw']}\n{text['post_time_text']} {all_draws[row].post_time}\n{text['over_time_text']} {all_draws[row].end_time}\n{text['chanel/chat']} {all_draws[row].chanel_name}\n{text['count_text']} {all_draws[row].prize_kinds}\n{text['text']} {all_draws[row].text}"
     keyboard_markup = create_inline_keyboard({text['back']: "back", text['next']: "next"}, 2)
     if all_draws[row].file_type == 'photo':
         bot.send_photo(user_id, all_draws[row].file_id, draw_text, reply_markup=keyboard_markup)
@@ -99,7 +110,7 @@ def start_draw_timer():
                                                 reply_markup=create_inline_keyboard({language_check(i.user_id)[1]['draw']['get_on']: f'geton_{i.id}'}))
                     else:
                         tmz = bot.send_message(i.chanel_id, i.text, reply_markup=create_inline_keyboard({language_check(i.user_id)[1]['draw']['get_on']: f'geton_{i.id}'}))
-                    post_base.new(models.Draw, i.id, i.user_id, tmz.message_id, i.chanel_id, i.chanel_name, i.text, i.file_type, i.file_id, i.winners_count, i.post_time,
+                    post_base.new(models.Draw, i.id, i.user_id, tmz.message_id, i.chanel_id, i.chanel_name, i.text, i.file_type, i.file_id, i.prize_kinds, i.post_time,
                                   i.end_time)
                     post_base.delete(models.DrawNot, id=str(i.id))
             time.sleep(5)
