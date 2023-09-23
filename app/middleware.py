@@ -8,6 +8,7 @@ import telebot.types
 import keyboard
 import models
 from app import middleware_base, bot, post_base, end_base
+from config import TIME_FORMAT
 from tool import language_check, create_inline_keyboard, get_vocabulary
 
 
@@ -89,8 +90,8 @@ def start_draw_timer():
             for i in post_base.select_all(models.DrawNot):
 
                 count = 0
-                post_time = datetime.now().strftime('%Y-%m-%d %H:%M')
-                if post_time >= time.strptime(i.post_time, '%Y-%m-%d %H:%M'):
+                post_time = datetime.now().strftime(TIME_FORMAT)
+                if post_time >= time.strptime(i.post_time, TIME_FORMAT):
                     if i.file_type == 'photo':
                         tmz = bot.send_photo(i.chanel_id, i.file_id, i.text, reply_markup=create_inline_keyboard({language_check(i.user_id)[1]['draw']['get_on']: f'geton_{i.id}'}))
                     elif i.file_type == 'document':
@@ -112,8 +113,8 @@ def end_draw_timer():
         while 1:
             for i in end_base.select_all(models.Draw):
                 count = 0
-                post_time = datetime.now().strftime('%Y-%m-%d %H:%M')
-                if post_time >= time.strptime(i.end_time, '%Y-%m-%d %H:%M'):
+                post_time = datetime.now().strftime(TIME_FORMAT)
+                if post_time >= time.strptime(i.end_time, TIME_FORMAT):
                     text = language_check(i.user_id)[1]['draw']
                     players = end_base.select_all(models.DrawPlayer, draw_id=str(i.id))
                     if not players:

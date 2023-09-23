@@ -1,8 +1,10 @@
+from datetime import datetime
 from time import strptime
 
 import telebot.types
 
 from app import bot
+from config import TIME_FORMAT
 from middleware import keyboard
 from tool import get_vocabulary
 
@@ -39,9 +41,20 @@ def is_int_gt_one(text: str) -> bool:
         return False
 
 
-def is_valid_date_format(text: str, f='%Y-%m-%d %H:%M') -> bool:
+def is_valid_date_format(text: str, f=TIME_FORMAT) -> bool:
     try:
         strptime(text, f)
         return True
     except Exception:
         return False
+
+
+def is_time_less_or_equal(txt_time_left: str, txt_time_right='') -> bool:
+    if not txt_time_right:
+        txt_time_right = get_time_now()
+
+    return strptime(txt_time_left, TIME_FORMAT) <= strptime(txt_time_right, TIME_FORMAT)
+
+
+def get_time_now() -> str:
+    return datetime.now().strftime(TIME_FORMAT)
