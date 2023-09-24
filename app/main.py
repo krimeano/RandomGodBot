@@ -144,7 +144,7 @@ def submit(message):
     text = language_check(user_id)
     bot.send_message(user_id, text[1]['draw']['submit_text'], reply_markup=keyboard.get_menu_keyboard(user_id))
     tmp = base.get_one(models.DrawProgress, user_id=str(user_id))
-    base.new(models.DrawNot, tmp.id, tmp.user_id, tmp.chanel_id, tmp.chanel_name, tmp.text, tmp.file_type, tmp.file_id, tmp.winners_count, tmp.post_time, tmp.end_time)
+    base.new(models.DrawNot, tmp.id, tmp.user_id, tmp.chanel_id, tmp.chanel_name, tmp.text, tmp.file_type, tmp.file_id, tmp.post_time, tmp.end_time)
     base.delete(models.DrawProgress, user_id=(str(user_id)))
     base.delete(models.State, user_id=(str(user_id)))
 
@@ -302,7 +302,11 @@ def handle_prize_kinds(message: telebot.types.Message):
     prize_kinds = int(message.text)
     tmp = fsm.get_state_arg(user_id)
     current_kind_ix = 0
-    prizes = [[0, '', False, []]] * prize_kinds
+    prizes = []
+
+    for _ in range(prize_kinds):
+        prizes.append([0, '', False, []])
+
     fsm.set_state(user_id, "enter_prize_kind_winners_count", **tmp, prizes=prizes, current_kind_ix=current_kind_ix)
     bot_lib.send_with_back_to_menu(user_id, text['prize_kind_winners_count'].format(current_kind_ix + 1))
 
