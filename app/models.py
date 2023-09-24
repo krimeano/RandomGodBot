@@ -28,9 +28,10 @@ class User(Base):
             self.user_id, self.user_name, self.language)
 
 
-class DrawProgress(Base):
-    __tablename__ = 'draw_progress'
-    id = Column(Integer, primary_key=True)
+# statuses: progress -> not_posted -> posted -> archived
+class Draw(Base):
+    __tablename__ = 'draw'
+    id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, index=True)
     chanel_id = Column(String, index=True)
     chanel_name = Column(String)
@@ -39,6 +40,8 @@ class DrawProgress(Base):
     file_id = Column(String)
     post_time = Column(String)
     end_time = Column(String)
+    status = Column(String, default='progress', index=True)
+    message_id = Column(String, nullable=True, index=True)
 
     def __init__(self, user_id, chanel_id, chanel_name, text, file_type, file_id, post_time, end_time):
         self.user_id = str(user_id)
@@ -51,7 +54,7 @@ class DrawProgress(Base):
         self.end_time = end_time
 
     def __repr__(self):
-        return "<DrawProgress(id=%d, user_id='%s', chanel_id='%s', chanel_name='%s', text='%s', file_type='%s', file_id='%s', post_time='%s', end_time='%s')>" % (
+        return "<Draw(id=%d, user_id='%s', chanel_id='%s', chanel_name='%s', text='%s', file_type='%s', file_id='%s', post_time='%s', end_time='%s', status='%s', message_id='%s')>" % (
             self.id,
             self.user_id,
             self.chanel_id,
@@ -60,82 +63,10 @@ class DrawProgress(Base):
             self.file_type,
             self.file_id,
             self.post_time,
-            self.end_time)
-
-
-class DrawNot(Base):
-    __tablename__ = 'not_posted'
-    id = Column(Integer, primary_key=True)
-    user_id = Column(String, index=True)
-    chanel_id = Column(String, index=True)
-    chanel_name = Column(String)
-    text = Column(String)
-    file_type = Column(String)
-    file_id = Column(String)
-    post_time = Column(String)
-    end_time = Column(String)
-
-    def __init__(self, draw_id, user_id, chanel_id, chanel_name, text, file_type, file_id, post_time, end_time):
-        self.id = draw_id
-        self.user_id = str(user_id)
-        self.chanel_id = str(chanel_id)
-        self.chanel_name = chanel_name
-        self.text = text
-        self.file_type = file_type
-        self.file_id = file_id
-        self.post_time = post_time
-        self.end_time = end_time
-
-    def __repr__(self):
-        return "<DrawNot(id=%d, user_id='%s', chanel_id='%s', chanel_name='%s', text='%s', file_type='%s', file_id='%s', post_time='%s', end_time='%s')>" % (
-            self.id,
-            self.user_id,
-            self.chanel_id,
-            self.chanel_name,
-            self.text,
-            self.file_type,
-            self.file_id,
-            self.post_time,
-            self.end_time)
-
-
-class Draw(Base):
-    __tablename__ = 'draw'
-    id = Column(Integer, primary_key=True)
-    user_id = Column(String, index=True)
-    message_id = Column(String)
-    chanel_id = Column(String, index=True)
-    chanel_name = Column(String)
-    text = Column(String)
-    file_type = Column(String)
-    file_id = Column(String)
-    post_time = Column(String)
-    end_time = Column(String)
-
-    def __init__(self, draw_id, user_id, message_id, chanel_id, chanel_name, text, file_type, file_id, post_time, end_time):
-        self.id = draw_id
-        self.user_id = str(user_id)
-        self.message_id = str(message_id)
-        self.chanel_id = str(chanel_id)
-        self.chanel_name = chanel_name
-        self.text = text
-        self.file_type = file_type
-        self.file_id = file_id
-        self.post_time = post_time
-        self.end_time = end_time
-
-    def __repr__(self):
-        return "<Draw(id=%d, user_id='%s', message_id='%s' chanel_id='%s', chanel_name='%s', text='%s', file_type='%s', file_id='%s', post_time='%s', end_time='%s')>" % (
-            self.id,
-            self.user_id,
+            self.end_time,
+            self.status,
             self.message_id,
-            self.chanel_id,
-            self.chanel_name,
-            self.text,
-            self.file_type,
-            self.file_id,
-            self.post_time,
-            self.end_time)
+        )
 
 
 class SubscribeChannel(Base):
@@ -162,7 +93,7 @@ class DrawPlayer(Base):
     user_id = Column(String, index=True)
     user_name = Column(String)
 
-    def __init__(self, draw_id, user_id, user_name):
+    def __init__(self, draw_id: int, user_id: str, user_name: str):
         self.draw_id = draw_id
         self.user_id = user_id
         self.user_name = user_name
@@ -222,3 +153,22 @@ class DrawPrize(Base):
     def __repr__(self):
         return "<DrawPrize(id=%s, draw_id=%d, winners_count=%d, description='%s', preset_winners=%s)>" % (
             self.id, self.draw_id, self.winners_count, self.description, self.preset_winners)
+
+
+class DrawWinner(Base):
+    __tablename__ = 'draw_winner'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    draw_id = Column(Integer, index=True)
+    prize_id = Column(Integer)
+    user_id = Column(String)
+    user_name = Column(String)
+
+    def __init__(self, draw_id: int, prize_id: int, user_id: str, user_name: str):
+        self.draw_id = draw_id
+        self.prize_id = prize_id
+        self.user_id = user_id
+        self.user_name = user_name
+
+    def __repr__(self):
+        return "<DrawWinner(id=%s, draw_id=%d, prize_id=%d, user_id='%s', user_name=%s)>" % (
+            self.id, self.draw_id, self.prize_id, self.user_id, self.user_name)

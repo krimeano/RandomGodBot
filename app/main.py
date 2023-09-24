@@ -81,8 +81,13 @@ def handle_close(call: telebot.types.CallbackQuery):
 def back_in_menu(message):
     user_id = message.chat.id
     base.delete(models.State, user_id=str(user_id))
-    base.delete(models.DrawProgress, user_id=(str(user_id)))
-    base.delete(models.SubscribeChannel, user_id=(str(user_id)))
+
+    progress_draw = base.get_one(models.Draw, user_id=str(user_id), status='progress')
+    if progress_draw:
+        base.delete(models.Draw, id=progress_draw.id)
+        base.delete(models.DrawPrize, draw_id=progress_draw.id)
+
+    base.delete(models.SubscribeChannel, user_id=str(user_id))
 
     bot_lib.send_welcome(user_id)
 
@@ -143,10 +148,8 @@ def submit(message):
     user_id = message.chat.id
     text = language_check(user_id)
     bot.send_message(user_id, text[1]['draw']['submit_text'], reply_markup=keyboard.get_menu_keyboard(user_id))
-    tmp = base.get_one(models.DrawProgress, user_id=str(user_id))
-    base.new(models.DrawNot, tmp.id, tmp.user_id, tmp.chanel_id, tmp.chanel_name, tmp.text, tmp.file_type, tmp.file_id, tmp.post_time, tmp.end_time)
-    base.delete(models.DrawProgress, user_id=(str(user_id)))
-    base.delete(models.State, user_id=(str(user_id)))
+    base.update(models.Draw, {'status': 'not_posted'}, user_id=str(user_id), status='progress')
+    base.delete(models.State, user_id=str(user_id))
 
 
 @bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['menu_buttons']['create_draw'])
@@ -208,8 +211,13 @@ def proceed_to_state(message: telebot.types.Message, state: str):
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'new_raffle')
 def enter_id(message):
     user_id = message.chat.id
-    base.delete(models.DrawProgress, user_id=(str(user_id)))
-    base.delete(models.SubscribeChannel, user_id=(str(user_id)))
+
+    progress_draw = base.get_one(models.Draw, user_id=str(user_id), status='progress')
+    if progress_draw:
+        base.delete(models.Draw, id=progress_draw.id)
+        base.delete(models.DrawPrize, draw_id=progress_draw.id)
+
+    base.delete(models.SubscribeChannel, user_id=str(user_id))
 
     text = get_vocabulary(user_id)['draw']
     fsm.set_state(user_id, "writing_channel_id")
@@ -473,13 +481,13 @@ def confirm_change_start_time(message):
         bot.send_message(user_id, text['over_time'])
         return
 
-    tmp = base.get_one(models.DrawProgress, user_id=str(user_id))
+    tmp = base.get_one(models.Draw, user_id=str(user_id), status='progress')
 
     if time.strptime(message.text, TIME_FORMAT) >= time.strptime(tmp.end_time, TIME_FORMAT):
         bot.send_message(user_id, text['post_bigger'].format(bot_lib.get_time_now()))
         return
 
-    base.update(models.DrawProgress, {'post_time': message.text}, user_id=str(user_id))
+    base.update(models.Draw, {'post_time': message.text}, user_id=str(user_id), status='progress')
     middleware.send_draw_info(user_id)
 
 
@@ -507,12 +515,12 @@ def confirm_change_end_time(message):
         bot.send_message(user_id, text['over_time'])
         return
 
-    tmp = base.get_one(models.DrawProgress, user_id=str(user_id))
+    tmp = base.get_one(models.Draw, user_id=str(user_id), status='progress')
     if time.strptime(message.text, TIME_FORMAT) <= time.strptime(tmp.post_time, TIME_FORMAT):
         bot.send_message(user_id, text['post_bigger'].format(bot_lib.get_time_now()))
         return
 
-    base.update(models.DrawProgress, {'end_time': message.text}, user_id=str(user_id))
+    base.update(models.Draw, {'end_time': message.text}, user_id=str(user_id), status='progress')
     middleware.send_draw_info(user_id)
 
 
@@ -528,7 +536,7 @@ def change_text(message):
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'change_draw_text')
 def confirm_change_draw_text(message):
     user_id = message.chat.id
-    base.update(models.DrawProgress, {'text': message.text}, user_id=str(user_id))
+    base.update(models.Draw, {'text': message.text}, user_id=str(user_id), status='progress')
     middleware.send_draw_info(user_id)
 
 
@@ -553,7 +561,7 @@ def confirm_change_draw_photo(message):
         file_type = 'document'
 
     user_id = message.chat.id
-    base.update(models.DrawProgress, {'file_id': file_id, 'file_type': file_type}, user_id=str(user_id))
+    base.update(models.Draw, {'file_id': file_id, 'file_type': file_type}, user_id=str(user_id), status='progress')
     middleware.send_draw_info(user_id)
 
 
@@ -579,7 +587,7 @@ def add_check_channel(message):
         print('EXCEPT', 'add_check_channel', str(exception))
         bot.send_message(user_id, text['not_in_chanel'])
         return ''
-    tmp = base.get_one(models.DrawProgress, user_id=str(user_id))
+    tmp = base.get_one(models.Draw, user_id=str(user_id), status='progress')
     base.new(models.SubscribeChannel, tmp.id, str(user_id), message.text)
     middleware.send_draw_info(user_id)
     print(base.select_all(models.SubscribeChannel))
