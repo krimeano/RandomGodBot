@@ -73,23 +73,41 @@ def my_draw_info(user_id, row=0):
         return 'first'
 
     text = language_check(user_id)[1]['my_draw']
-    not_posted = middleware_base.select_all(models.Draw, user_id=str(user_id), status='not_posted')
-    posted = middleware_base.select_all(models.Draw, user_id=str(user_id), status='posted')
+
+    not_posted: list[models.Draw] = middleware_base.select_all(models.Draw, user_id=str(user_id), status='not_posted')
+    posted: list[models.Draw] = middleware_base.select_all(models.Draw, user_id=str(user_id), status='posted')
+
     all_draws = not_posted + posted
+
     if len(all_draws) == 0:
         bot.send_message(user_id, text['no_draw'])
         return
 
     if row >= len(all_draws):
-        print('notttt')
-        return 'last'  # @todo not sure
+        return 'last'
 
-    draw_text = f"{text['your_draw']}\n{text['post_time_text']} {all_draws[row].post_time}\n{text['over_time_text']} {all_draws[row].end_time}\n{text['chanel/chat']} {all_draws[row].chanel_name}\n{text['count_text']}\n{text['text']} {all_draws[row].text}"
+    draw = all_draws[row]
+
+    prizes: list[models.DrawPrize] = middleware_base.select_all(models.DrawPrize, draw_id=draw.id)
+
+    draw_text = f"{text['your_draw']}\n"
+    draw_text += f"{text['post_time_text']} {draw.post_time}\n"
+    draw_text += f"{text['over_time_text']} {draw.end_time}\n"
+    draw_text += f"{text['chanel/chat']} {draw.chanel_name}\n"
+    draw_text += f"Победители:\n"
+
+    for prize in prizes:
+        if prize.preset_winners:
+            draw_text += f" - {prize.preset_winners} {prize.description};\n"
+        else:
+            draw_text += f" - {prize.winners_count} случайных игроков {prize.description};\n"
+
+    draw_text += f"{text['text']} {draw.text}"
     keyboard_markup = create_inline_keyboard({text['back']: "back", text['next']: "next"}, 2)
-    if all_draws[row].file_type == 'photo':
-        bot.send_photo(user_id, all_draws[row].file_id, draw_text, reply_markup=keyboard_markup)
-    elif all_draws[row].file_type == 'document':
-        bot.send_document(user_id, all_draws[row].file_id, caption=draw_text, reply_markup=keyboard_markup)
+    if draw.file_type == 'photo':
+        bot.send_photo(user_id, draw.file_id, draw_text, reply_markup=keyboard_markup)
+    elif draw.file_type == 'document':
+        bot.send_document(user_id, draw.file_id, caption=draw_text, reply_markup=keyboard_markup)
     else:
         bot.send_message(user_id, draw_text, reply_markup=keyboard_markup)
 
