@@ -57,6 +57,7 @@
     "your_draw_over": "Your giveaway is over"
   },
   "my_draw": {
+    "preview_text": "Check the draw before publishing",
     "no_draw": "You have no active giveaways",
     "last": "Last",
     "first": "Next",
@@ -66,6 +67,7 @@
     "count_text": "Number of winners:",
     "post_time_text": "Time of start:",
     "over_time_text": "Time of end:",
+    "draw_restricted_days_text": "Participate restriction days:",
     "next": "Next",
     "back": "Back"
   },

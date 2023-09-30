@@ -12,8 +12,9 @@ from config import password, TIME_FORMAT
 from middleware import keyboard
 from tool import language_check, create_inline_keyboard, get_vocabulary
 
+middleware.start_draw_timer()
 
-# middleware.start_draw_timer() // @todo
+
 # middleware.end_draw_timer() // @todo
 
 
@@ -445,7 +446,29 @@ def enter_end_time(message):
         bot.send_message(user_id, text['post_bigger'].format(bot_lib.get_time_now()))
         return
 
-    fsm.set_state(user_id, "enter_end_time", **tmp, end_time=message.text)
+    fsm.set_state(user_id, "enter_restricted_days", **tmp, end_time=message.text)
+
+    bot_lib.send_with_back_to_menu(user_id, 'Введите за сколько дней до подведения итогов запретить участие, 0 если нет ограничения.')
+
+
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_restricted_days')
+def enter_restricted_days(message):
+    user_id = message.chat.id
+    text = get_vocabulary(message.chat.id)['draw']
+
+    if not bot_lib.is_integer(message.text):
+        bot.send_message(user_id, 'Введите число')
+        return
+
+    restricted_days = int(message.text)
+
+    if restricted_days < 0:
+        bot.send_message(user_id, 'Должно быть неотрицательное число')
+        return
+
+    tmp = fsm.get_state_arg(user_id)
+
+    fsm.set_state(user_id, "enter_restricted_days", **tmp, restricted_days=restricted_days)
 
     tmp = fsm.get_state_arg(user_id)
 
@@ -454,7 +477,6 @@ def enter_end_time(message):
 
     elif tmp['file_type'] == 'document':
         bot.send_document(user_id, tmp['file_id'], caption=middleware.create_draw_progress(user_id, tmp), reply_markup=keyboard.get_draw_keyboard(user_id))
-
     else:
         bot.send_message(user_id, middleware.create_draw_progress(user_id, tmp), reply_markup=keyboard.get_draw_keyboard(user_id))
 

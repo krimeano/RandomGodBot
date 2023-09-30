@@ -14,9 +14,7 @@ def get_menu_keyboard(user_id):
 def get_draw_keyboard(user_id):
     buttons = get_vocabulary(user_id)['draw']['draw_buttons']
     draw_keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
-    draw_keyboard.row(buttons[0], buttons[1])
-    draw_keyboard.row(buttons[2], buttons[3])
-    draw_keyboard.row(buttons[4], buttons[5])
+    draw_keyboard.row(buttons[5])
     draw_keyboard.row(buttons[6], buttons[7])
     return draw_keyboard
 

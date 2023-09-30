@@ -26,7 +26,7 @@ def create_draw_progress(user_id, tmp):
 
     draw = middleware_base.new(
         models.Draw,
-        str(user_id), tmp['chanel_id'], tmp['chanel_name'], tmp['draw_text'], tmp['file_type'], tmp['file_id'], tmp['start_time'], tmp['end_time']
+        str(user_id), tmp['chanel_id'], tmp['chanel_name'], tmp['draw_text'], tmp['file_type'], tmp['file_id'], tmp['start_time'], tmp['end_time'], tmp['restricted_days']
     )
 
     for prize in prizes:
@@ -43,8 +43,7 @@ def create_draw_progress(user_id, tmp):
 
 def draw_info(user_id):
     tmp = check_post(str(user_id))
-    text = language_check(user_id)[1]['draw']
-    return f"{text['change_text']}\n{text['post_time_text']} {tmp.post_time}\n{text['over_time_text']} {tmp.end_time}\n{text['chanel/chat']} {tmp.chanel_name}\n{text['count_text']}\n{text['text']} {tmp.text}"
+    return render_draw_info(tmp, 'preview_text')
 
 
 def check_post(user_id):
@@ -87,12 +86,29 @@ def my_draw_info(user_id, row=0):
         return 'last'
 
     draw = all_draws[row]
+    draw_text = render_draw_info(draw)
 
+    keyboard_markup = create_inline_keyboard({text['back']: "back", text['next']: "next"}, 2)
+
+    if draw.file_type == 'photo':
+        bot.send_photo(user_id, draw.file_id, draw_text, reply_markup=keyboard_markup)
+    elif draw.file_type == 'document':
+        bot.send_document(user_id, draw.file_id, caption=draw_text, reply_markup=keyboard_markup)
+    else:
+        bot.send_message(user_id, draw_text, reply_markup=keyboard_markup)
+
+
+def render_draw_info(draw: models.Draw, title_key='your_draw') -> str:
+    text = language_check(draw.user_id)[1]['my_draw']
     prizes: list[models.DrawPrize] = middleware_base.select_all(models.DrawPrize, draw_id=draw.id)
 
-    draw_text = f"{text['your_draw']}\n"
+    draw_text = f"{text[title_key]}\n"
     draw_text += f"{text['post_time_text']} {draw.post_time}\n"
     draw_text += f"{text['over_time_text']} {draw.end_time}\n"
+
+    if draw.restricted_days:
+        draw_text += f"{text['draw_restricted_days_text']} {draw.restricted_days}\n"
+
     draw_text += f"{text['chanel/chat']} {draw.chanel_name}\n"
     draw_text += f"Победители:\n"
 
@@ -103,13 +119,8 @@ def my_draw_info(user_id, row=0):
             draw_text += f" - {prize.winners_count} случайных игроков {prize.description};\n"
 
     draw_text += f"{text['text']} {draw.text}"
-    keyboard_markup = create_inline_keyboard({text['back']: "back", text['next']: "next"}, 2)
-    if draw.file_type == 'photo':
-        bot.send_photo(user_id, draw.file_id, draw_text, reply_markup=keyboard_markup)
-    elif draw.file_type == 'document':
-        bot.send_document(user_id, draw.file_id, caption=draw_text, reply_markup=keyboard_markup)
-    else:
-        bot.send_message(user_id, draw_text, reply_markup=keyboard_markup)
+
+    return draw_text
 
 
 def start_draw_timer():
