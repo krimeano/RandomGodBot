@@ -471,120 +471,9 @@ def enter_restricted_days(message):
     fsm.set_state(user_id, "enter_restricted_days", **tmp, restricted_days=restricted_days)
 
     tmp = fsm.get_state_arg(user_id)
-
-    if tmp['file_type'] == 'photo':
-        bot.send_photo(user_id, tmp['file_id'], middleware.create_draw_progress(user_id, tmp), reply_markup=keyboard.get_draw_keyboard(user_id))
-
-    elif tmp['file_type'] == 'document':
-        bot.send_document(user_id, tmp['file_id'], caption=middleware.create_draw_progress(user_id, tmp), reply_markup=keyboard.get_draw_keyboard(user_id))
-    else:
-        bot.send_message(user_id, middleware.create_draw_progress(user_id, tmp), reply_markup=keyboard.get_draw_keyboard(user_id))
-
-
-# -------------------------------------- # change start time # -------------------------------------- #
-@bot.message_handler(func=lambda message: middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][0])
-def change_start_time(message):
-    user_id = message.chat.id
-    text = get_vocabulary(user_id)['draw']
-    fsm.set_state(user_id, 'change_post_time')
-    bot_lib.send_with_back(user_id, text['post_time'].format(bot_lib.get_time_now()))
-
-
-@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'change_post_time')
-def confirm_change_start_time(message):
-    user_id = message.chat.id
-    text = get_vocabulary(user_id)['draw']
-
-    if not bot_lib.is_valid_date_format(message.text):
-        bot.send_message(user_id, text['invalid_format_time'].format(bot_lib.get_time_now()))
-        return
-
-    if time.strptime(datetime.now().strftime(TIME_FORMAT), TIME_FORMAT) >= time.strptime(message.text, TIME_FORMAT):
-        bot.send_message(user_id, text['over_time'])
-        return
-
-    tmp = base.get_one(models.Draw, user_id=str(user_id), status='progress')
-
-    if time.strptime(message.text, TIME_FORMAT) >= time.strptime(tmp.end_time, TIME_FORMAT):
-        bot.send_message(user_id, text['post_bigger'].format(bot_lib.get_time_now()))
-        return
-
-    base.update(models.Draw, {'post_time': message.text}, user_id=str(user_id), status='progress')
-    middleware.send_draw_info(user_id)
-
-
-# -------------------------------------- # change end time # -------------------------------------- #
-@bot.message_handler(func=lambda message: middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][1])
-def change_end_time(message):
-    user_id = message.chat.id
-    text = get_vocabulary(user_id)['draw']
-    fsm.set_state(user_id, 'change_end_time')
-    bot_lib.send_with_back(user_id, text['end_time'].format(bot_lib.get_time_now()))
-
-
-@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'change_end_time')
-def confirm_change_end_time(message):
-    user_id = message.chat.id
-    text = get_vocabulary(user_id)['draw']
-    try:
-        print(time.strptime(message.text, TIME_FORMAT))
-    except Exception as exception:
-        print('EXCEPT', 'confirm_change_end_time', str(exception))
-        bot.send_message(user_id, text['invalid_format_time'].format(bot_lib.get_time_now()))
-        return
-
-    if time.strptime(datetime.now().strftime(TIME_FORMAT), TIME_FORMAT) >= time.strptime(message.text, TIME_FORMAT):
-        bot.send_message(user_id, text['over_time'])
-        return
-
-    tmp = base.get_one(models.Draw, user_id=str(user_id), status='progress')
-    if time.strptime(message.text, TIME_FORMAT) <= time.strptime(tmp.post_time, TIME_FORMAT):
-        bot.send_message(user_id, text['post_bigger'].format(bot_lib.get_time_now()))
-        return
-
-    base.update(models.Draw, {'end_time': message.text}, user_id=str(user_id), status='progress')
-    middleware.send_draw_info(user_id)
-
-
-# -------------------------------------- # change text # -------------------------------------- #
-@bot.message_handler(func=lambda message: middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][3])
-def change_text(message):
-    user_id = message.chat.id
-    text = get_vocabulary(user_id)['draw']
-    fsm.set_state(user_id, 'change_draw_text')
-    bot_lib.send_with_back(user_id, text['draw_text'])
-
-
-@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'change_draw_text')
-def confirm_change_draw_text(message):
-    user_id = message.chat.id
-    base.update(models.Draw, {'text': message.text}, user_id=str(user_id), status='progress')
-    middleware.send_draw_info(user_id)
-
-
-# -------------------------------------- # change photo # -------------------------------------- #
-@bot.message_handler(func=lambda message: middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][4])
-def change_photo(message):
-    user_id = message.chat.id
-    text = get_vocabulary(user_id)['draw']
-    fsm.set_state(user_id, 'change_draw_photo')
-    bot_lib.send_with_back(user_id, text['file'])
-
-
-@bot.message_handler(content_types=['text', 'photo', 'document'], func=lambda message: fsm.get_state_key(message.chat.id) == 'change_draw_photo')
-def confirm_change_draw_photo(message):
-    file_id = ''
-    file_type = 'text'
-    if message.content_type == 'photo':
-        file_id = message.photo[0].file_id
-        file_type = 'photo'
-    elif message.content_type == 'document':
-        file_id = message.document.file_id
-        file_type = 'document'
-
-    user_id = message.chat.id
-    base.update(models.Draw, {'file_id': file_id, 'file_type': file_type}, user_id=str(user_id), status='progress')
-    middleware.send_draw_info(user_id)
+    draw = middleware.create_draw_progress(user_id, tmp)
+    draw_text = middleware.render_draw_info(draw, 'preview_text')
+    middleware.send_draw_message(user_id, draw, draw_text, keyboard.get_draw_keyboard(user_id))
 
 
 # -------------------------------------- # add channel check # -------------------------------------- #
@@ -615,7 +504,7 @@ def add_check_channel(message):
     print(base.select_all(models.SubscribeChannel))
 
 
-######## My Channels
+# My Channels
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'my_channels')
 def my_channels(message: telebot.types.Message):
     user_id = message.chat.id

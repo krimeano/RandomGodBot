@@ -11,7 +11,7 @@ from app import middleware_base, bot, post_base, end_base
 from tool import language_check, create_inline_keyboard, get_vocabulary
 
 
-def check_user(user_id):
+def check_user(user_id) -> models.User | bool:
     user = middleware_base.get_one(models.User, user_id=str(user_id))
     if user is not None:
         return user
@@ -19,7 +19,7 @@ def check_user(user_id):
         return False
 
 
-def create_draw_progress(user_id, tmp):
+def create_draw_progress(user_id, tmp) -> models.Draw:
     middleware_base.delete(models.Draw, user_id=str(user_id), status='progress')
 
     prizes = tmp['prizes']  # [[0, '', False, []]]
@@ -38,32 +38,17 @@ def create_draw_progress(user_id, tmp):
 
     middleware_base.delete(models.State, user_id=str(user_id))
 
-    return draw_info(user_id)
+    return draw
 
 
-def draw_info(user_id):
-    tmp = check_post(str(user_id))
-    return render_draw_info(tmp, 'preview_text')
-
-
-def check_post(user_id):
+def check_post(user_id) -> models.Draw | None:
     return middleware_base.get_one(models.Draw, user_id=str(user_id), status='progress')
 
 
 def send_draw_info(user_id):
-    tmp = check_post(str(user_id))
-    text = language_check(user_id)[1]['draw']
-    draw_text = f"{text['change_text']}\n{text['post_time_text']} {tmp.post_time}\n{text['over_time_text']} {tmp.end_time}\n{text['chanel/chat']} {tmp.chanel_name}\n{text['count_text']}\n{text['text']} {tmp.text}"
-
-    if tmp.file_type == 'photo':
-        bot.send_photo(user_id, tmp.file_id, draw_text, reply_markup=keyboard.get_draw_keyboard(user_id))
-
-    if tmp.file_type == 'document':
-        bot.send_document(user_id, tmp.file_id, caption=draw_text, reply_markup=keyboard.get_draw_keyboard(user_id))
-
-    else:
-        bot.send_message(user_id, draw_text, reply_markup=keyboard.get_draw_keyboard(user_id))
-
+    draw = check_post(str(user_id))
+    draw_text = render_draw_info(draw, 'preview_text')
+    send_draw_message(user_id, draw, draw_text, keyboard.get_draw_keyboard(user_id))
     middleware_base.delete(models.State, user_id=user_id)
 
 
@@ -87,15 +72,8 @@ def my_draw_info(user_id, row=0):
 
     draw = all_draws[row]
     draw_text = render_draw_info(draw)
-
     keyboard_markup = create_inline_keyboard({text['back']: "back", text['next']: "next"}, 2)
-
-    if draw.file_type == 'photo':
-        bot.send_photo(user_id, draw.file_id, draw_text, reply_markup=keyboard_markup)
-    elif draw.file_type == 'document':
-        bot.send_document(user_id, draw.file_id, caption=draw_text, reply_markup=keyboard_markup)
-    else:
-        bot.send_message(user_id, draw_text, reply_markup=keyboard_markup)
+    send_draw_message(user_id, draw, draw_text, keyboard_markup)
 
 
 def render_draw_info(draw: models.Draw, title_key='your_draw') -> str:
@@ -127,23 +105,12 @@ def start_draw_timer():
     def timer():
         while 1:
             for item in post_base.select_all(models.Draw, status='not_posted'):
-
                 if bot_lib.is_time_less_or_equal(item.post_time):
-
-                    if item.file_type == 'photo':
-                        tmz = bot.send_photo(item.chanel_id, item.file_id, item.text,
-                                             reply_markup=create_inline_keyboard({language_check(item.user_id)[1]['draw']['get_on']: f'geton_{item.id}'}))
-
-                    elif item.file_type == 'document':
-                        tmz = bot.send_document(item.chanel_id, item.file_id, caption=item.text,
-                                                reply_markup=create_inline_keyboard({language_check(item.user_id)[1]['draw']['get_on']: f'geton_{item.id}'}))
-                    else:
-                        tmz = bot.send_message(item.chanel_id, item.text,
-                                               reply_markup=create_inline_keyboard({language_check(item.user_id)[1]['draw']['get_on']: f'geton_{item.id}'}))
-
+                    buttons = create_inline_keyboard({language_check(item.user_id)[1]['draw']['get_on']: f'geton_{item.id}'})
+                    tmz = send_draw_message(item.chanel_id, item, item.text, buttons)
                     post_base.update(models.Draw, {'message_id': tmz.message_id, 'status': 'posted'}, id=item.id)
 
-            time.sleep(5)
+            time.sleep(55)
 
     r_t = threading.Thread(target=timer)
     r_t.start()
@@ -245,3 +212,13 @@ def render_is_random_inline_keyboard(user_id: int) -> telebot.types.InlineKeyboa
     values['Автоматически'] = {'callback_data': 'new_raffle.is_random.yes'}
     values['В главное меню ↩️'] = {'callback_data': 'close'}
     return telebot.util.quick_markup(values, row_width=2)
+
+
+def send_draw_message(chat_id: str, draw: models.Draw, draw_text: str, markup: telebot.types.ReplyKeyboardMarkup) -> telebot.types.Message:
+    if draw.file_type == 'photo':
+        return bot.send_photo(chat_id, draw.file_id, draw_text, reply_markup=markup)
+
+    if draw.file_type == 'document':
+        return bot.send_document(chat_id, draw.file_id, caption=draw_text, reply_markup=markup)
+
+    return bot.send_message(chat_id, draw_text, reply_markup=markup)
