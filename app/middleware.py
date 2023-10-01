@@ -215,7 +215,7 @@ def render_winners(draw: models.Draw) -> (str, str):
         prize_winners = [x for x in draw_winners if x.prize_id == prize.id]
         if not prize_winners:
             continue
-        prize_text = '\n'.join([winner_to_link(x) for x in prize_winners]) + '\n' + prize.description
+        prize_text = '\n'.join([winner_to_link(x) for x in prize_winners]) + '\n' + prize.description + '\n'
         winners += prize_text
         owin += prize_text
 

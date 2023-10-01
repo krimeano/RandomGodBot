@@ -14,8 +14,7 @@ from tool import language_check, create_inline_keyboard, get_vocabulary
 
 middleware.start_draw_timer()
 
-
-# middleware.end_draw_timer() // @todo
+middleware.end_draw_timer()
 
 
 # -------------------------------------- # START # -------------------------------------- #
