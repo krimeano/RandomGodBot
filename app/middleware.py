@@ -112,9 +112,9 @@ def start_draw_timer():
                         tmz = send_draw_message(item.chanel_id, item, item.text, buttons)
                         post_base.update(models.Draw, {'message_id': tmz.message_id, 'status': 'posted'}, id=item.id)
                     except Exception as exception:
-                        print('EXCEPT', 'start_draw_timer timer', str(exception))
+                        print('EXCEPT', 'start_draw_timer timer', exception)
                         post_base.update(models.Draw, {'status': 'archived'}, id=item.id)
-            time.sleep(55)
+            time.sleep(10)
 
     r_t = threading.Thread(target=timer)
     r_t.start()
@@ -124,45 +124,111 @@ def end_draw_timer():
     def end_timer():
         while 1:
             for item in end_base.select_all(models.Draw, status='posted'):
-                count = 0
+                if not bot_lib.is_time_less_or_equal(item.end_time):
+                    continue
 
-                if bot_lib.is_time_less_or_equal(item.end_time):
-                    text = language_check(item.user_id)[1]['draw']
-                    players = end_base.select_all(models.DrawPlayer, draw_id=str(item.id))
+                text = language_check(item.user_id)[1]['draw']
+                try:
+                    define_winners(item)
+                    owin, winners = render_winners(item)
+                    bot.send_message(chat_id=str(item.chanel_id), text=winners, parse_mode='HTML')
 
-                    if not players:
-                        winners = f"{item.text}\n*****\n{text['no_winners']}"
-                        owin = f"{text['no_winners']}"
-
-                    else:
-                        winners = f"{item.text}\n*****\n{text['winners']}\n"  # @todo winners
-                        owin = f"{text['winners']}\n"
-                        for x in range(int(item.winners_count)):
-                            if count >= len(players):
-                                break
-                            random_player = random.choice(players)
-                            winners += f"<a href='tg://user?id={random_player.user_id}'>{random_player.user_name}</a>\n"
-                            owin += f"<a href='tg://user?id={random_player.user_id}'>{random_player.user_name}</a>\n"
-                            count += 1
-                    try:
-                        bot.send_message(chat_id=str(item.chanel_id), text=winners, parse_mode='HTML')
-
-                    except:
-                        end_base.update(models.Draw, {'status': 'archived'}, id=item.id)
-                        bot.send_message(item.chanel_id, text['failed_post'])
-                        return
-
-                    bot.send_message(item.user_id, f"{text['your_draw_over']}\n{owin}", parse_mode='HTML')
+                except Exception as exception:
+                    print('EXCEPT', 'end_timer', exception)
                     end_base.update(models.Draw, {'status': 'archived'}, id=item.id)
-                    time.sleep(1)
+                    bot.send_message(item.chanel_id, text['failed_post'])
+                    break
 
-            time.sleep(5)
+                bot.send_message(item.user_id, f"{text['your_draw_over']}\n{owin}", parse_mode='HTML')
+                end_base.update(models.Draw, {'status': 'archived'}, id=item.id)
+                break
+
+            time.sleep(10)
 
     r_t = threading.Thread(target=end_timer)
     r_t.start()
 
 
-get_on_restricted_statuses = ('left', 'kicked', 'restricted', 'administrator', 'creator')
+def define_winners(draw: models.Draw):
+    if draw.status != 'posted':
+        raise Exception('draw is not posted')
+
+    players: list[models.DrawPlayer] = end_base.select_all(models.DrawPlayer, draw_id=draw.id)
+    players_map = dict((normalize_username(x.user_name), x) for x in players)
+
+    prizes: list[models.DrawPrize] = end_base.select_all(models.DrawPrize, draw_id=draw.id)
+
+    manual_player_usernames: list[str] = []
+
+    players_to_raffle = 0
+
+    for prize in prizes:
+        if prize.preset_winners:
+            usernames = [normalize_username(x) for x in prize.preset_winners.split(', ')]
+            manual_player_usernames += usernames
+        else:
+            players_to_raffle += prize.winners_count
+
+    player_usernames: list[str] = [x for x in players_map if x not in manual_player_usernames]
+
+    winner_usernames: list[str] = []
+
+    while len(winner_usernames) < players_to_raffle and len(player_usernames) > 0:
+        username = random.choice(player_usernames)
+        player_usernames.remove(username)
+        winner_usernames.append(username)
+
+    for prize in prizes:
+        if prize.preset_winners:
+            usernames = [normalize_username(x) for x in prize.preset_winners.split(', ')]
+            for username in usernames:
+                user_id = username in players_map and players_map[username].user_id or ''
+                end_base.new(models.DrawWinner, draw.id, prize.id, user_id, username)
+        else:
+            for ix in range(prize.winners_count):
+                if not len(winner_usernames):
+                    break
+                username = winner_usernames.pop(0)
+                player = players_map[username]
+                end_base.new(models.DrawWinner, draw.id, prize.id, player.user_id, username)
+
+
+def normalize_username(username: str) -> str:
+    if username[0] != '@':
+        return '@' + username
+
+    return username
+
+
+def render_winners(draw: models.Draw) -> (str, str):
+    text = language_check(draw.user_id)[1]['draw']
+    draw_winners: list[models.DrawWinner] = end_base.select_all(models.DrawWinner, draw_id=draw.id)
+
+    if not draw_winners:
+        return f"{text['no_winners']}", f"{draw.text}\n*****\n{text['no_winners']}"
+
+    prizes: list[models.DrawPrize] = end_base.select_all(models.DrawPrize, draw_id=draw.id)
+    winners = f"{draw.text}\n*****\n{text['winners']}\n"
+    owin = f"{text['winners']}\n"
+
+    for prize in prizes:
+        prize_winners = [x for x in draw_winners if x.prize_id == prize.id]
+        if not prize_winners:
+            continue
+        prize_text = '\n'.join([winner_to_link(x) for x in prize_winners]) + '\n' + prize.description
+        winners += prize_text
+        owin += prize_text
+
+    return owin, winners
+
+
+def winner_to_link(draw_winner: models.DrawWinner) -> str:
+    if draw_winner.user_id:
+        return f"<a href='tg://user?id={draw_winner.user_id}'>{draw_winner.user_name}</a>"
+    return draw_winner.user_name
+
+
+# get_on_restricted_statuses = ('left', 'kicked', 'restricted', 'administrator', 'creator')
 get_on_restricted_statuses = ('left', 'kicked', 'restricted')
 
 
