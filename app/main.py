@@ -34,20 +34,23 @@ def start(message):
 
 
 @bot.callback_query_handler(func=lambda call: call.data.split('_')[0] == 'geton')
-def get_on_draw(call):
+def get_on_draw(call: telebot.types.CallbackQuery):
     try:
-        user_id = call.message.chat.id
-        text = get_vocabulary(user_id)['draw']
-        tmp = middleware.new_player(call)
+        chat_id = call.message.chat.id
+        text = get_vocabulary(chat_id)['draw']
+        (result, txt) = middleware.new_player(call)
 
-        if tmp[1] == 'not_subscribed':
-            bot.answer_callback_query(callback_query_id=call.id, show_alert=True, text=text['not_subscribe'])
-        if not tmp[0]:
-            bot.answer_callback_query(callback_query_id=call.id, show_alert=True, text=text['already_in'])
-        else:
-            bot.answer_callback_query(callback_query_id=call.id, show_alert=True, text=text['got_on'])
-            bot.edit_message_reply_markup(chat_id=user_id, message_id=call.message.message_id, inline_message_id=call.inline_message_id,
-                                          reply_markup=create_inline_keyboard({f"({tmp[1]}) {tmp[2]}": call.data}))
+        if result in ('no_draw_found', 'not_subscribed', 'already_in'):
+            return bot.answer_callback_query(callback_query_id=call.id, show_alert=True, text=txt)
+
+        bot.answer_callback_query(callback_query_id=call.id, show_alert=True, text=text['got_on'])
+
+        bot.edit_message_reply_markup(
+            chat_id=chat_id,
+            message_id=call.message.message_id,
+            inline_message_id=call.inline_message_id,
+            reply_markup=create_inline_keyboard({txt: call.data})
+        )
 
     except Exception as exception:
         print('EXCEPT', 'get_on_draw', str(exception))
@@ -81,14 +84,9 @@ def handle_close(call: telebot.types.CallbackQuery):
 @bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['back_in_menu'])
 def back_in_menu(message):
     user_id = message.chat.id
+    delete_progress_draw(user_id)
+
     base.delete(models.State, user_id=str(user_id))
-
-    progress_draw = base.get_one(models.Draw, user_id=str(user_id), status='progress')
-    if progress_draw:
-        base.delete(models.Draw, id=progress_draw.id)
-        base.delete(models.DrawPrize, draw_id=progress_draw.id)
-
-    base.delete(models.SubscribeChannel, user_id=str(user_id))
 
     bot_lib.send_welcome(user_id)
 
@@ -212,13 +210,7 @@ def proceed_to_state(message: telebot.types.Message, state: str):
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'new_raffle')
 def enter_id(message):
     user_id = message.chat.id
-
-    progress_draw = base.get_one(models.Draw, user_id=str(user_id), status='progress')
-    if progress_draw:
-        base.delete(models.Draw, id=progress_draw.id)
-        base.delete(models.DrawPrize, draw_id=progress_draw.id)
-
-    base.delete(models.SubscribeChannel, user_id=str(user_id))
+    delete_progress_draw(user_id)
 
     text = get_vocabulary(user_id)['draw']
     fsm.set_state(user_id, "writing_channel_id")
@@ -332,7 +324,6 @@ def handle_prize_kind_winners_count(message: telebot.types.Message):
     tmp = fsm.get_state_arg(user_id)
     current_kind_ix = tmp['current_kind_ix']
     tmp['prizes'][current_kind_ix][0] = int(message.text)
-    print('tmp = ', tmp)
     fsm.set_state(user_id, "enter_prize_kind_winners_text", **tmp)
 
     bot_lib.send_with_back_to_menu(user_id, text['prize_kind_winners_text'].format(current_kind_ix + 1))
@@ -346,7 +337,6 @@ def handle_prize_kind_winners_text(message: telebot.types.Message):
     tmp = fsm.get_state_arg(user_id)
     current_kind_ix = tmp['current_kind_ix']
     tmp['prizes'][current_kind_ix][1] = message.text
-    print('tmp = ', tmp)
     fsm.set_state(user_id, "select_prize_winners_is_random", **tmp)
 
     buttons = middleware.render_is_random_inline_keyboard(user_id)
@@ -396,7 +386,6 @@ def increment_current_kind_ix(user_id, current_state):
     current_kind_ix = current_state['current_kind_ix']
     current_kind_ix += 1
     current_state['current_kind_ix'] = current_kind_ix
-    print('tmp = ', current_state)
 
     if current_kind_ix < len(current_state['prizes']):
         fsm.set_state(user_id, "enter_prize_kind_winners_count", **current_state)
@@ -501,7 +490,6 @@ def add_check_channel(message):
     tmp = base.get_one(models.Draw, user_id=str(user_id), status='progress')
     base.new(models.SubscribeChannel, tmp.id, str(user_id), message.text)
     middleware.send_draw_info(user_id)
-    print(base.select_all(models.SubscribeChannel))
 
 
 # My Channels
@@ -525,8 +513,10 @@ def handle_my_channels_add_new(call: telebot.types.CallbackQuery):
 def handle_my_channels_add_new_entered(message: telebot.types.Message):
     user_id = message.chat.id
     try:
-        chat = bot.get_chat(message.text)
-        base.new(models.MyChannel, user_id, message.text, chat.title)
+        channel_key = message.text
+        channel_key = '@'.join(channel_key.split('https://t.me/'))
+        chat = bot.get_chat(channel_key)
+        base.new(models.MyChannel, user_id, channel_key, chat.title)
         fsm.set_state(user_id, 'my_channels')
         bot.send_message(user_id, 'Канал добавлен!')
         my_channels(message)
@@ -552,6 +542,14 @@ def handle_my_channels_delete(call: telebot.types.CallbackQuery):
     bot.delete_message(call.message.chat.id, call.message.message_id)
     bot.answer_callback_query(call.id, 'Канал удален', False)
     my_channels(call.message)
+
+
+def delete_progress_draw(user_id):
+    progress_draw = base.get_one(models.Draw, user_id=str(user_id), status='progress')
+    if progress_draw:
+        base.delete(models.SubscribeChannel, draw_id=progress_draw.id)
+        base.delete(models.DrawPrize, draw_id=progress_draw.id)
+        base.delete(models.Draw, id=progress_draw.id)
 
 
 if __name__ == '__main__':

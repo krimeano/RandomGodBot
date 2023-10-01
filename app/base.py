@@ -54,6 +54,12 @@ class DataBase:
     def base_init(self):
         BaseObj.metadata.create_all(base_engine)
 
+    def count(self, model, **filter_s) -> int:
+        query = session.query(model)
+        if len(filter_s) > 0:
+            query = query.filter_by(**filter_s)
+        return query.count()
+
 
 d = DataBase()
 d.base_init()

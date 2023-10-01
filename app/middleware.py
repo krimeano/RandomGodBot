@@ -106,10 +106,14 @@ def start_draw_timer():
         while 1:
             for item in post_base.select_all(models.Draw, status='not_posted'):
                 if bot_lib.is_time_less_or_equal(item.post_time):
-                    buttons = create_inline_keyboard({language_check(item.user_id)[1]['draw']['get_on']: f'geton_{item.id}'})
-                    tmz = send_draw_message(item.chanel_id, item, item.text, buttons)
-                    post_base.update(models.Draw, {'message_id': tmz.message_id, 'status': 'posted'}, id=item.id)
-
+                    try:
+                        text = get_vocabulary(item.user_id)
+                        buttons = create_inline_keyboard({text['get_on']: f'geton_{item.id}'})
+                        tmz = send_draw_message(item.chanel_id, item, item.text, buttons)
+                        post_base.update(models.Draw, {'message_id': tmz.message_id, 'status': 'posted'}, id=item.id)
+                    except Exception as exception:
+                        print('EXCEPT', 'start_draw_timer timer', str(exception))
+                        post_base.update(models.Draw, {'status': 'archived'}, id=item.id)
             time.sleep(55)
 
     r_t = threading.Thread(target=timer)
@@ -158,23 +162,39 @@ def end_draw_timer():
     r_t.start()
 
 
-def new_player(call):
-    player_id = int(call.data.split('_')[1])
-    tmp = middleware_base.get_one(models.Draw, id=player_id, status='posted')
-    chanel = middleware_base.select_all(models.SubscribeChannel, draw_id=tmp.id)
-    status = ['left', 'kicked', 'restricted', 'member', 'administrator', 'creator']
-    for i in chanel:
-        if bot.get_chat_member(chat_id=i.channel_id, user_id=call.from_user.id).status in status:
-            return 'not_subscribed'  # @todo different return signature
+get_on_restricted_statuses = ('left', 'kicked', 'restricted', 'administrator', 'creator')
+get_on_restricted_statuses = ('left', 'kicked', 'restricted')
 
-    players = middleware_base.get_one(models.DrawPlayer, draw_id=str(tmp.id), user_id=str(call.from_user.id))
 
-    if players is None:
-        middleware_base.new(models.DrawPlayer, tmp.id, str(call.from_user.id), str(call.from_user.username))
-        tmz = middleware_base.select_all(models.DrawPlayer, draw_id=tmp.id)
-        return len(tmz), language_check(tmp.user_id)[1]['draw']['play']
-    else:
-        return False
+def new_player(call: telebot.types.CallbackQuery) -> (str, str):
+    draw_id = int(call.data.split('_')[1])
+    draw: models.Draw = middleware_base.get_one(models.Draw, id=draw_id, status='posted')
+
+    if not draw:
+        return 'no_draw_found', 'Розыгрыш не найден'
+
+    text = get_vocabulary(draw.user_id)['draw']
+
+    # @todo: check restricted hours
+
+    player_id = call.from_user.id
+    player = middleware_base.get_one(models.DrawPlayer, draw_id=str(draw_id), user_id=str(player_id))
+
+    if player:
+        return 'already_in', text['already_in']
+
+    channels_to_subscribe = middleware_base.select_all(models.SubscribeChannel, draw_id=draw_id)
+
+    for channel in channels_to_subscribe:
+        chat_member = bot.get_chat_member(chat_id=channel.channel_id, user_id=player_id)
+        if chat_member.status in get_on_restricted_statuses:
+            return 'not_subscribed', text['not_subscribe']
+
+    middleware_base.new(models.DrawPlayer, draw_id, str(player_id), str(call.from_user.username))
+
+    total = middleware_base.count(models.DrawPlayer, draw_id=draw_id)
+
+    return 'got_on', f"({total}) {text['play']}"
 
 
 def render_my_channels_inline_keyboard(user_id: int) -> telebot.types.InlineKeyboardMarkup:
