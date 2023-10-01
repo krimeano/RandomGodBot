@@ -107,7 +107,7 @@ def start_draw_timer():
             for item in post_base.select_all(models.Draw, status='not_posted'):
                 if bot_lib.is_time_less_or_equal(item.post_time):
                     try:
-                        text = get_vocabulary(item.user_id)
+                        text = get_vocabulary(item.user_id)['draw']
                         buttons = create_inline_keyboard({text['get_on']: f'geton_{item.id}'})
                         tmz = send_draw_message(item.chanel_id, item, item.text, buttons)
                         post_base.update(models.Draw, {'message_id': tmz.message_id, 'status': 'posted'}, id=item.id)
