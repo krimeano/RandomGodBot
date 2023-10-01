@@ -26,7 +26,7 @@ def create_draw_progress(user_id, tmp) -> models.Draw:
 
     draw = middleware_base.new(
         models.Draw,
-        str(user_id), tmp['chanel_id'], tmp['chanel_name'], tmp['draw_text'], tmp['file_type'], tmp['file_id'], tmp['start_time'], tmp['end_time'], tmp['restricted_days']
+        str(user_id), tmp['chanel_id'], tmp['chanel_name'], tmp['draw_text'], tmp['file_type'], tmp['file_id'], tmp['start_time'], tmp['end_time'], tmp['restricted_hours']
     )
 
     for prize in prizes:
@@ -84,8 +84,8 @@ def render_draw_info(draw: models.Draw, title_key='your_draw') -> str:
     draw_text += f"{text['post_time_text']} {draw.post_time}\n"
     draw_text += f"{text['over_time_text']} {draw.end_time}\n"
 
-    if draw.restricted_days:
-        draw_text += f"{text['draw_restricted_days_text']} {draw.restricted_days}\n"
+    if draw.restricted_hours:
+        draw_text += f"{text['draw_restricted_hours_text']} {draw.restricted_hours}\n"
 
     draw_text += f"{text['chanel/chat']} {draw.chanel_name}\n"
     draw_text += f"Победители:\n"

@@ -40,11 +40,11 @@ class Draw(Base):
     file_id = Column(String)
     post_time = Column(String)
     end_time = Column(String)
-    restricted_days = Column(Integer, default=0)
+    restricted_hours = Column(Integer, default=0)
     status = Column(String, default='progress', index=True)
     message_id = Column(String, nullable=True, index=True)
 
-    def __init__(self, user_id, chanel_id, chanel_name, text, file_type, file_id, post_time, end_time, restricted_days):
+    def __init__(self, user_id, chanel_id, chanel_name, text, file_type, file_id, post_time, end_time, restricted_hours):
         self.user_id = str(user_id)
         self.chanel_id = str(chanel_id)
         self.chanel_name = chanel_name
@@ -53,10 +53,10 @@ class Draw(Base):
         self.file_id = file_id
         self.post_time = post_time
         self.end_time = end_time
-        self.restricted_days = restricted_days
+        self.restricted_hours = restricted_hours
 
     def __repr__(self):
-        return "<Draw(id=%d, user_id='%s', chanel_id='%s', chanel_name='%s', text='%s', file_type='%s', file_id='%s', post_time='%s', end_time='%s', restricted_days=%d, status='%s', message_id='%s')>" % (
+        return "<Draw(id=%d, user_id='%s', chanel_id='%s', chanel_name='%s', text='%s', file_type='%s', file_id='%s', post_time='%s', end_time='%s', restricted_hours=%d, status='%s', message_id='%s')>" % (
             self.id,
             self.user_id,
             self.chanel_id,
@@ -66,7 +66,7 @@ class Draw(Base):
             self.file_id,
             self.post_time,
             self.end_time,
-            self.restricted_days,
+            self.restricted_hours,
             self.status,
             self.message_id,
         )

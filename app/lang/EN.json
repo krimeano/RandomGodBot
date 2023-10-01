@@ -67,7 +67,7 @@
     "count_text": "Number of winners:",
     "post_time_text": "Time of start:",
     "over_time_text": "Time of end:",
-    "draw_restricted_days_text": "Participate restriction days:",
+    "draw_restricted_hours_text": "Participate restriction hours:",
     "next": "Next",
     "back": "Back"
   },

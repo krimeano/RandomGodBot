@@ -446,13 +446,13 @@ def enter_end_time(message):
         bot.send_message(user_id, text['post_bigger'].format(bot_lib.get_time_now()))
         return
 
-    fsm.set_state(user_id, "enter_restricted_days", **tmp, end_time=message.text)
+    fsm.set_state(user_id, "enter_restricted_hours", **tmp, end_time=message.text)
 
     bot_lib.send_with_back_to_menu(user_id, 'Введите за сколько дней до подведения итогов запретить участие, 0 если нет ограничения.')
 
 
-@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_restricted_days')
-def enter_restricted_days(message):
+@bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_restricted_hours')
+def enter_restricted_hours(message):
     user_id = message.chat.id
     text = get_vocabulary(message.chat.id)['draw']
 
@@ -460,15 +460,15 @@ def enter_restricted_days(message):
         bot.send_message(user_id, 'Введите число')
         return
 
-    restricted_days = int(message.text)
+    restricted_hours = int(message.text)
 
-    if restricted_days < 0:
+    if restricted_hours < 0:
         bot.send_message(user_id, 'Должно быть неотрицательное число')
         return
 
     tmp = fsm.get_state_arg(user_id)
 
-    fsm.set_state(user_id, "enter_restricted_days", **tmp, restricted_days=restricted_days)
+    fsm.set_state(user_id, "enter_restricted_hours", **tmp, restricted_hours=restricted_hours)
 
     tmp = fsm.get_state_arg(user_id)
     draw = middleware.create_draw_progress(user_id, tmp)
