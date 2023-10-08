@@ -184,8 +184,13 @@ def define_winners(draw: models.Draw):
         if prize.preset_winners:
             usernames = [bot_lib.username_normal(x) for x in prize.preset_winners.split(', ')]
             for username in usernames:
-                user_id = username in players_map and players_map[username].user_id or ''
-                end_base.new(models.DrawWinner, draw.id, prize.id, user_id, username, bot_lib.display_name(username))
+                user_id = 0
+                display_name = bot_lib.display_name(username)
+                if username in players_map:
+                    player = players_map[username]
+                    user_id = player.user_id
+                    display_name = bot_lib.display_name(username, player.first_name, player.last_name)
+                end_base.new(models.DrawWinner, draw.id, prize.id, user_id, username, display_name)
         else:
             for ix in range(prize.winners_count):
                 if not len(winner_usernames):
@@ -233,7 +238,8 @@ def new_player(call: telebot.types.CallbackQuery) -> (str, str):
 
     text = get_vocabulary(draw.user_id)['draw']
 
-    # @todo: check restricted hours
+    if draw.restricted_hours > 0 and bot_lib.is_time_restricted(draw.end_time, draw.restricted_hours):
+        return 'registration_closed', 'Регистрация в розыгрыше уже закрыта'
 
     player = call.from_user
     player_id = player.id

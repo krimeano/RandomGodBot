@@ -38,7 +38,7 @@ def get_on_draw(call: telebot.types.CallbackQuery):
         text = get_vocabulary(chat_id)['draw']
         (result, txt) = middleware.new_player(call)
 
-        if result in ('no_draw_found', 'not_subscribed', 'already_in'):
+        if result in ('no_draw_found', 'registration_closed', 'not_subscribed', 'already_in'):
             return bot.answer_callback_query(callback_query_id=call.id, show_alert=True, text=txt)
 
         bot.answer_callback_query(callback_query_id=call.id, show_alert=True, text=text['got_on'])
@@ -558,6 +558,11 @@ def delete_progress_draw(user_id):
         base.delete(models.SubscribeChannel, draw_id=progress_draw.id)
         base.delete(models.DrawPrize, draw_id=progress_draw.id)
         base.delete(models.Draw, id=progress_draw.id)
+
+
+@bot.message_handler(func=lambda message: True)
+def unhandled_message(message: telebot.types.Message):
+    print('UNHANDLED MESSAGE', message)
 
 
 if __name__ == '__main__':

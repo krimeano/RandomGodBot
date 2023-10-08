@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from time import strptime
 
 import telebot.types
@@ -54,6 +54,11 @@ def is_time_less_or_equal(txt_time_left: str, txt_time_right='') -> bool:
         txt_time_right = get_time_now()
 
     return strptime(txt_time_left, TIME_FORMAT) <= strptime(txt_time_right, TIME_FORMAT)
+
+
+def is_time_restricted(txt_time: str, restricted_hours=0) -> bool:
+    restrict_at = (datetime.now() + timedelta(hours=restricted_hours)).strftime(TIME_FORMAT)
+    return strptime(txt_time, TIME_FORMAT) < strptime(restrict_at, TIME_FORMAT)
 
 
 def get_time_now() -> str:
