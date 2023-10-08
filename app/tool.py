@@ -19,7 +19,7 @@ def get_vocabulary(user_id) -> dict:
 
 # ----Подгружаем файл с текстами ответов бота----
 def language_check(user_id) -> (bool, dict):
-    language = tool_base.get_one(models.User, user_id=str(user_id))
+    language = tool_base.get_one(models.User, user_id=user_id)
     if language is None:
         return False, ru_bot_text
     else:

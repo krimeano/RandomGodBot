@@ -1,6 +1,3 @@
-import time
-from datetime import datetime
-
 import telebot.types
 
 import bot_lib
@@ -8,7 +5,7 @@ import middleware
 import models
 from app import fsm, bot
 from app import main_base as base
-from config import password, TIME_FORMAT
+from config import password
 from middleware import keyboard
 from tool import language_check, create_inline_keyboard, get_vocabulary
 
@@ -16,10 +13,12 @@ middleware.start_draw_timer()
 
 middleware.end_draw_timer()
 
+admin_status = ('creator', 'administrator')
+
 
 # -------------------------------------- # START # -------------------------------------- #
 @bot.message_handler(commands=['start'])
-def start(message):
+def start(message: telebot.types.Message):
     user_id = message.chat.id
     base.delete(models.State, user_id=user_id)
 
@@ -27,7 +26,7 @@ def start(message):
         stored, _ = language_check(user_id)
 
         if not stored:
-            base.new(models.User, str(user_id), str(message.chat.username), "RU")
+            base.new(models.User, user_id, message.chat.username, "RU")
 
         bot_lib.send_welcome(user_id)
 
@@ -59,16 +58,16 @@ def get_on_draw(call: telebot.types.CallbackQuery):
 # language checkers
 # -------------------------------------- # change language # -------------------------------------- #
 @bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['menu_buttons']['toggle_language'])
-def change_language(message):
+def change_language(message: telebot.types.Message):
     user_id = message.chat.id
-    user = base.get_one(models.User, user_id=str(user_id))
+    user: models.User = base.get_one(models.User, user_id=user_id)
 
     new_language = 'RU'
 
     if user.language == 'RU':
         new_language = 'EN'
 
-    base.update(models.User, {'language': new_language}, user_id=str(user_id))
+    base.update(models.User, {'language': new_language}, user_id=user_id)
 
     bot_lib.send_welcome(user_id)
 
@@ -81,42 +80,42 @@ def handle_close(call: telebot.types.CallbackQuery):
 
 
 @bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['back_in_menu'])
-def back_in_menu(message):
+def back_in_menu(message: telebot.types.Message):
     user_id = message.chat.id
     delete_progress_draw(user_id)
 
-    base.delete(models.State, user_id=str(user_id))
+    base.delete(models.State, user_id=user_id)
 
     bot_lib.send_welcome(user_id)
 
 
 # -------------------------------------- # back in draw menu # -------------------------------------- #
 @bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['draw']['back'] and middleware.check_post(message.chat.id))
-def back_in_draw_menu(message):
+def back_in_draw_menu(message: telebot.types.Message):
     user_id = message.chat.id
-    base.delete(models.State, user_id=str(user_id))
+    base.delete(models.State, user_id=user_id)
     middleware.send_draw_info(user_id)
 
 
 # -------------------------------------- # back in draw menu # -------------------------------------- #
 @bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['menu_buttons']['my_draws'])
-def my_draws(message):
+def my_draws(message: telebot.types.Message):
     user_id = message.chat.id
     middleware.my_draw_info(user_id)
     fsm.set_state(user_id, 'my_draws', number=0)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'next')
-def handle_next(call):
+def handle_next(call: telebot.types.CallbackQuery):
     handle_move(call)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'back')
-def handle_back(call):
+def handle_back(call: telebot.types.CallbackQuery):
     handle_move(call, -1)
 
 
-def handle_move(call, step=1):
+def handle_move(call: telebot.types.CallbackQuery, step=1):
     user_id = call.message.chat.id
     try:
         text = get_vocabulary(user_id)['my_draw']
@@ -142,12 +141,12 @@ def handle_move(call, step=1):
 ############################################ draw func #################################################
 # -------------------------------------- # submit # -------------------------------------- #
 @bot.message_handler(func=lambda message: middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][6])
-def submit(message):
+def submit(message: telebot.types.Message):
     user_id = message.chat.id
     text = language_check(user_id)
     bot.send_message(user_id, text[1]['draw']['submit_text'], reply_markup=keyboard.get_menu_keyboard(user_id))
-    base.update(models.Draw, {'status': 'not_posted'}, user_id=str(user_id), status='progress')
-    base.delete(models.State, user_id=str(user_id))
+    base.update(models.Draw, {'status': 'not_posted'}, user_id=user_id, status='progress')
+    base.delete(models.State, user_id=user_id)
 
 
 @bot.message_handler(func=lambda message: message.text == get_vocabulary(message.chat.id)['menu_buttons']['create_draw'])
@@ -207,7 +206,7 @@ def proceed_to_state(message: telebot.types.Message, state: str):
 
 # -------------------------------------- # enter_id # -------------------------------------- #
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'new_raffle')
-def enter_id(message):
+def enter_id(message: telebot.types.Message):
     user_id = message.chat.id
     delete_progress_draw(user_id)
 
@@ -215,7 +214,7 @@ def enter_id(message):
     fsm.set_state(user_id, "writing_channel_id")
 
     buttons = middleware.render_choose_my_channel_inline_keyboard(user_id)
-    bot.send_message(user_id, text['choose_chanel_id'], reply_markup=buttons)
+    bot.send_message(user_id, text['choose_channel_id'], reply_markup=buttons)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('new_raffle.choose_my_channel.'))
@@ -231,14 +230,14 @@ def enter_text(call: telebot.types.CallbackQuery):
     bot.delete_message(user_id, call.message.id)
 
     text = get_vocabulary(user_id)['draw']
-    bot.send_message(user_id, 'Выбран канал {0} "{1}"'.format(channel.chanel_id, channel.chanel_name))
-    fsm.set_state(user_id, "writing_text", chanel_id=channel.chanel_id, chanel_name=channel.chanel_name)
+    bot.send_message(user_id, 'Выбран канал {0} "{1}"'.format(channel.channel_id, channel.channel_name))
+    fsm.set_state(user_id, "writing_text", channel_id=channel.channel_id, channel_name=channel.channel_name)
     bot_lib.send_with_back_to_menu(user_id, text['draw_text'])
 
 
 # -------------------------------------- # enter_text # -------------------------------------- #
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'writing_channel_id')
-def enter_text_deprecated(message):
+def enter_text_deprecated(message: telebot.types.Message):
     status = ['creator', 'administrator']
     user_id = message.chat.id
     text = get_vocabulary(user_id)['draw']
@@ -252,15 +251,15 @@ def enter_text_deprecated(message):
         bot.delete_message(tmp.chat.id, tmp.message_id)
     except Exception as exception:
         print('EXCEPT', 'enter_text', str(exception))
-        bot_lib.send_with_back_to_menu(user_id, text['not_in_chanel'])
+        bot_lib.send_with_back_to_menu(user_id, text['not_in_channel'])
         return ''
-    fsm.set_state(user_id, "writing_text", chanel_id=message.text, chanel_name=tmp.chat.title)
+    fsm.set_state(user_id, "writing_text", channel_id=message.text, channel_name=tmp.chat.title)
     bot_lib.send_with_back_to_menu(user_id, text['draw_text'])
 
 
 # -------------------------------------- # writing_text # -------------------------------------- #
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'writing_text')
-def enter_photo(message):
+def enter_photo(message: telebot.types.Message):
     user_id = message.chat.id
     text = get_vocabulary(user_id)['draw']
     tmp = fsm.get_state_arg(user_id)
@@ -271,7 +270,7 @@ def enter_photo(message):
 
 # -------------------------------------- # enter_photo # -------------------------------------- #
 @bot.message_handler(content_types=['text', 'photo', 'document'], func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_photo')
-def enter_photo(message):
+def enter_photo(message: telebot.types.Message):
     file_id = ''
     file_type = 'text'
 
@@ -396,7 +395,7 @@ def increment_current_kind_ix(user_id, current_state):
 
 # -------------------------------------- # enter_start_time # -------------------------------------- #
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_start_time')
-def enter_start_time(message):
+def enter_start_time(message: telebot.types.Message):
     user_id = message.chat.id
     text = get_vocabulary(user_id)['draw']
 
@@ -416,7 +415,7 @@ def enter_start_time(message):
 
 # -------------------------------------- # enter_end_time # -------------------------------------- #
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_end_time')
-def enter_end_time(message):
+def enter_end_time(message: telebot.types.Message):
     user_id = message.chat.id
     text = get_vocabulary(user_id)['draw']
 
@@ -440,7 +439,7 @@ def enter_end_time(message):
 
 
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'enter_restricted_hours')
-def enter_restricted_hours(message):
+def enter_restricted_hours(message: telebot.types.Message):
     user_id = message.chat.id
     text = get_vocabulary(message.chat.id)['draw']
 
@@ -466,28 +465,29 @@ def enter_restricted_hours(message):
 
 # -------------------------------------- # add channel check # -------------------------------------- #
 @bot.message_handler(func=lambda message: middleware.check_post(message.chat.id) and message.text == get_vocabulary(message.chat.id)['draw']['draw_buttons'][5])
-def add_chanel(message):
+def add_channel(message: telebot.types.Message):
     user_id = message.chat.id
     text = get_vocabulary(user_id)['draw']
     fsm.set_state(user_id, 'add_check_channel')
-    bot_lib.send_with_back(user_id, text['chanel_id_check'])
+    bot_lib.send_with_back(user_id, text['channel_id_check'])
 
 
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'add_check_channel')
-def add_check_channel(message):
+def add_check_channel(message: telebot.types.Message):
     user_id = message.chat.id
     text = get_vocabulary(user_id)['draw']
+    channel_key = message.text
+    channel_key = '@'.join(channel_key.split('https://t.me/'))
     try:
-        status = ['creator', 'administrator']
-        if str(bot.get_chat_member(chat_id=message.text, user_id=message.from_user.id).status) not in status:
+        if str(bot.get_chat_member(chat_id=channel_key, user_id=user_id).status) not in admin_status:
             bot.send_message(text['not_admin'])
             return ''
     except Exception as exception:
         print('EXCEPT', 'add_check_channel', str(exception))
-        bot.send_message(user_id, text['not_in_chanel'])
+        bot.send_message(user_id, text['not_in_channel'])
         return ''
-    tmp = base.get_one(models.Draw, user_id=str(user_id), status='progress')
-    base.new(models.SubscribeChannel, tmp.id, str(user_id), message.text)
+    tmp: models.Draw = base.get_one(models.Draw, user_id=user_id, status='progress')
+    base.new(models.SubscribeChannel, tmp.id, user_id, channel_key)
     middleware.send_draw_info(user_id)
 
 
@@ -505,32 +505,41 @@ def handle_my_channels_add_new(call: telebot.types.CallbackQuery):
     user_id = call.message.chat.id
     fsm.set_state(user_id, 'my_channels.add_new')
     bot.delete_message(user_id, call.message.message_id)
-    bot_lib.send_with_back_to_menu(user_id, get_vocabulary(user_id)['draw']['chanel_id'])
+    bot_lib.send_with_back_to_menu(user_id, get_vocabulary(user_id)['draw']['channel_id'])
 
 
 @bot.message_handler(func=lambda message: fsm.get_state_key(message.chat.id) == 'my_channels.add_new')
 def handle_my_channels_add_new_entered(message: telebot.types.Message):
     user_id = message.chat.id
+    channel_key = message.text
+    channel_key = '@'.join(channel_key.split('https://t.me/'))
+    text = get_vocabulary(user_id)['draw']
+
     try:
-        channel_key = message.text
-        channel_key = '@'.join(channel_key.split('https://t.me/'))
+        if str(bot.get_chat_member(chat_id=channel_key, user_id=user_id).status) not in admin_status:
+            bot.send_with_back_to_menu(user_id, text['not_admin'])
+            return
+
         chat = bot.get_chat(channel_key)
+
         base.new(models.MyChannel, user_id, channel_key, chat.title)
+
         fsm.set_state(user_id, 'my_channels')
+
         bot.send_message(user_id, 'Канал добавлен!')
         my_channels(message)
+
     except Exception as exception:
-        print('EXCEPT', 'handle_my_channels_add_new_entered', str(exception))
         bot_lib.send_with_back_to_menu(user_id, 'Не могу получить данные канала')
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('my_channels.view.'))
 def handle_my_channels_view(call: telebot.types.CallbackQuery):
     record_id = int(call.data.split('.').pop())
-    my_channel = base.get_one(models.MyChannel, id=record_id)
+    my_channel: models.MyChannel = base.get_one(models.MyChannel, id=record_id)
     user_id = call.message.chat.id
     bot.delete_message(user_id, call.message.message_id)
-    text = 'Канал "{0}"\n id: {1}'.format(my_channel.chanel_name, my_channel.chanel_id)
+    text = 'Канал "{0}"\n id: {1}'.format(my_channel.channel_name, my_channel.channel_id)
     bot_lib.send_with_back_to_menu(user_id, text)
 
 
@@ -544,7 +553,7 @@ def handle_my_channels_delete(call: telebot.types.CallbackQuery):
 
 
 def delete_progress_draw(user_id):
-    progress_draw = base.get_one(models.Draw, user_id=str(user_id), status='progress')
+    progress_draw: models.Draw = base.get_one(models.Draw, user_id=user_id, status='progress')
     if progress_draw:
         base.delete(models.SubscribeChannel, draw_id=progress_draw.id)
         base.delete(models.DrawPrize, draw_id=progress_draw.id)

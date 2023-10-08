@@ -58,3 +58,22 @@ def is_time_less_or_equal(txt_time_left: str, txt_time_right='') -> bool:
 
 def get_time_now() -> str:
     return datetime.now().strftime(TIME_FORMAT)
+
+
+def display_name(username: str, first_name='', last_name='') -> str:
+    full_name = []
+    if first_name:
+        full_name.append(first_name)
+    if last_name:
+        full_name.append(last_name)
+    if not full_name:
+        full_name.append(username_normal(username))
+
+    return ' '.join(full_name)
+
+
+def username_normal(username='') -> str:
+    prefix = ''
+    if username and username[0] != '@':
+        prefix = '@'
+    return prefix + username

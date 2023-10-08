@@ -14,27 +14,27 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = 'bot_user'
-    user_id = Column(String, primary_key=True)
-    user_name = Column(String)
+    user_id = Column(Integer, primary_key=True)
+    username = Column(String)
     language = Column(String)
 
-    def __init__(self, user_id, user_name, language):
+    def __init__(self, user_id: int, username: str, language='RU'):
         self.user_id = user_id
-        self.user_name = user_name
+        self.username = username
         self.language = language
 
     def __repr__(self):
-        return "<User(user_id='%s', user_name='%s', language='%s')>" % (
-            self.user_id, self.user_name, self.language)
+        return "<User(user_id=%d, username='%s', language='%s')>" % (
+            self.user_id, self.username, self.language)
 
 
 # statuses: progress -> not_posted -> posted -> archived
 class Draw(Base):
     __tablename__ = 'draw'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, index=True)
-    chanel_id = Column(String, index=True)
-    chanel_name = Column(String)
+    user_id = Column(Integer, index=True)
+    channel_id = Column(String, index=True)
+    channel_name = Column(String)
     text = Column(String)
     file_type = Column(String)
     file_id = Column(String)
@@ -42,12 +42,12 @@ class Draw(Base):
     end_time = Column(String)
     restricted_hours = Column(Integer, default=0)
     status = Column(String, default='progress', index=True)
-    message_id = Column(String, nullable=True, index=True)
+    message_id = Column(Integer, nullable=True, index=True)
 
-    def __init__(self, user_id, chanel_id, chanel_name, text, file_type, file_id, post_time, end_time, restricted_hours):
-        self.user_id = str(user_id)
-        self.chanel_id = str(chanel_id)
-        self.chanel_name = chanel_name
+    def __init__(self, user_id: int, channel_id: str, channel_name: str, text: str, file_type: str, file_id: str, post_time: str, end_time: str, restricted_hours: int):
+        self.user_id = user_id
+        self.channel_id = channel_id
+        self.channel_name = channel_name
         self.text = text
         self.file_type = file_type
         self.file_id = file_id
@@ -56,11 +56,11 @@ class Draw(Base):
         self.restricted_hours = restricted_hours
 
     def __repr__(self):
-        return "<Draw(id=%d, user_id='%s', chanel_id='%s', chanel_name='%s', text='%s', file_type='%s', file_id='%s', post_time='%s', end_time='%s', restricted_hours=%d, status='%s', message_id='%s')>" % (
+        return "<Draw(id=%d, user_id=%d, channel_id='%s', channel_name='%s', text='%s', file_type='%s', file_id='%s', post_time='%s', end_time='%s', restricted_hours=%d, status='%s', message_id=%d)>" % (
             self.id,
             self.user_id,
-            self.chanel_id,
-            self.chanel_name,
+            self.channel_id,
+            self.channel_name,
             self.text,
             self.file_type,
             self.file_id,
@@ -76,16 +76,16 @@ class SubscribeChannel(Base):
     __tablename__ = 'channel'
     id = Column(Integer, primary_key=True)
     draw_id = Column(Integer, index=True)
-    user_id = Column(String, index=True)
+    user_id = Column(Integer, index=True)
     channel_id = Column(String, index=True)
 
-    def __init__(self, draw_id, user_id, channel_id):
+    def __init__(self, draw_id: int, user_id: int, channel_id: str):
         self.draw_id = draw_id
         self.user_id = user_id
         self.channel_id = channel_id
 
     def __repr__(self):
-        return "<channel(id=%d, draw_id=%d, user_id='%s', channel_id='%s')>" % (
+        return "<channel(id=%d, draw_id=%d, user_id=%d, channel_id='%s')>" % (
             self.id, self.draw_id, self.user_id, self.channel_id)
 
 
@@ -93,17 +93,21 @@ class DrawPlayer(Base):
     __tablename__ = 'players'
     id = Column(Integer, primary_key=True)
     draw_id = Column(Integer, index=True)
-    user_id = Column(String, index=True)
-    user_name = Column(String)
+    user_id = Column(Integer, index=True)
+    username = Column(String, default='')
+    first_name = Column(String, default='')
+    last_name = Column(String, default='')
 
-    def __init__(self, draw_id: int, user_id: str, user_name: str):
+    def __init__(self, draw_id: int, user_id: int, username='', first_name='', last_name=''):
         self.draw_id = draw_id
         self.user_id = user_id
-        self.user_name = user_name
+        self.username = username
+        self.first_name = first_name
+        self.last_name = last_name
 
     def __repr__(self):
-        return "<Player(draw_id='%s', user_id='%s', user_name='%s')>" % (
-            self.draw_id, self.user_id, self.user_name)
+        return "<Player(draw_id=%d, user_id=%d, username='%s', first_name='%s', last_name='%s')>" % (
+            self.draw_id, self.user_id, self.username, self.first_name, self.last_name)
 
 
 class State(Base):
@@ -118,7 +122,7 @@ class State(Base):
         self.arg = arg
 
     def __repr__(self):
-        return "<State(user_id='%s', state='%s', arg='%s')>" % (
+        return "<State(user_id=%d, state='%s', arg='%s')>" % (
             self.user_id, self.state, self.arg)
 
 
@@ -126,17 +130,17 @@ class MyChannel(Base):
     __tablename__ = 'my_channels'
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, index=True)
-    chanel_id = Column(String, index=True)
-    chanel_name = Column(String)
+    channel_id = Column(String, index=True)
+    channel_name = Column(String)
 
-    def __init__(self, user_id: int, chanel_id: str, chanel_name=''):
+    def __init__(self, user_id: int, channel_id: str, channel_name=''):
         self.user_id = user_id
-        self.chanel_id = chanel_id
-        self.chanel_name = chanel_name
+        self.channel_id = channel_id
+        self.channel_name = channel_name
 
     def __repr__(self):
-        return "<MyChannel(id=%s, user_id=%d, chanel_id='%s', chanel_name='%s')>" % (
-            self.id, self.user_id, self.chanel_id, self.chanel_name)
+        return "<MyChannel(id=%s, user_id=%d, channel_id='%s', channel_name='%s')>" % (
+            self.id, self.user_id, self.channel_id, self.channel_name)
 
 
 class DrawPrize(Base):
@@ -163,15 +167,17 @@ class DrawWinner(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     draw_id = Column(Integer, index=True)
     prize_id = Column(Integer)
-    user_id = Column(String)
-    user_name = Column(String)
+    user_id = Column(Integer)
+    username = Column(String)
+    display_name = Column(String)
 
-    def __init__(self, draw_id: int, prize_id: int, user_id: str, user_name: str):
+    def __init__(self, draw_id: int, prize_id: int, user_id: int, username='', display_name=''):
         self.draw_id = draw_id
         self.prize_id = prize_id
         self.user_id = user_id
-        self.user_name = user_name
+        self.username = username
+        self.display_name = display_name
 
     def __repr__(self):
-        return "<DrawWinner(id=%s, draw_id=%d, prize_id=%d, user_id='%s', user_name=%s)>" % (
-            self.id, self.draw_id, self.prize_id, self.user_id, self.user_name)
+        return "<DrawWinner(id=%s, draw_id=%d, prize_id=%d, user_id=%d, username='%s', display_name='%s')>" % (
+            self.id, self.draw_id, self.prize_id, self.user_id, self.username, self.display_name)
