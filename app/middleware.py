@@ -81,6 +81,7 @@ def my_draw_info(user_id, row=0):
 def render_draw_info(draw: models.Draw, title_key='your_draw') -> str:
     text = language_check(draw.user_id)[1]['my_draw']
     prizes: list[models.DrawPrize] = middleware_base.select_all(models.DrawPrize, draw_id=draw.id)
+    channels_to_subscribe: list[models.SubscribeChannel] = middleware_base.select_all(models.SubscribeChannel, draw_id=draw.id)
 
     draw_text = f"{text[title_key]}\n"
     draw_text += f"{text['post_time_text']} {draw.post_time}\n"
@@ -90,13 +91,18 @@ def render_draw_info(draw: models.Draw, title_key='your_draw') -> str:
         draw_text += f"{text['draw_restricted_hours_text']} {draw.restricted_hours}\n"
 
     draw_text += f"{text['channel/chat']} {draw.channel_name}\n"
-    draw_text += f"Победители:\n"
+    draw_text += "Победители:\n"
 
     for prize in prizes:
         if prize.preset_winners:
             draw_text += f" - {prize.preset_winners} {prize.description};\n"
         else:
             draw_text += f" - {prize.winners_count} случайных игроков {prize.description};\n"
+
+    if channels_to_subscribe:
+        draw_text += "Для участия необходимо подписаться на каналы:\n"
+        for channel in channels_to_subscribe:
+            draw_text += f" - {channel.channel_id}\n"
 
     draw_text += f"{text['text']} {draw.text}"
 
