@@ -252,7 +252,6 @@ def new_player(call: telebot.types.CallbackQuery) -> (str, str):
 
     for channel in channels_to_subscribe:
         chat_member = bot.get_chat_member(chat_id=channel.channel_id, user_id=player_id)
-        print('chat_member.user >>> ', chat_member.user)
         if chat_member.status in get_on_restricted_statuses:
             return 'not_subscribed', text['not_subscribe']
 
