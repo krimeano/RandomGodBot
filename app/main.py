@@ -31,6 +31,13 @@ def start(message: telebot.types.Message):
         bot_lib.send_welcome(user_id)
 
 
+@bot.message_handler(commands=['test'])
+def handle_test(message: telebot.types.Message):
+    user_id = message.chat.id
+    if message.chat.type == 'private':
+        bot.send_message(user_id, 'тестовое <a href="https://t.me/ave_mariy">Аве Мария</a> сообщение', parse_mode='HTML')
+
+
 @bot.callback_query_handler(func=lambda call: call.data.split('_')[0] == 'geton')
 def get_on_draw(call: telebot.types.CallbackQuery):
     try:
@@ -368,7 +375,17 @@ def handle_prize_kind_winners_manual(message: telebot.types.Message):
     tmp = fsm.get_state_arg(user_id)
     current_kind_ix = tmp['current_kind_ix']
     winners: list[str] = tmp['prizes'][current_kind_ix][3]
-    winner = message.text.strip()  # @todo проверить что пользователь существует и в чате
+    raw_winner = message.text.strip()
+    winner_data = raw_winner.split(' ')
+    username = bot_lib.username_normal(winner_data.pop(0))
+    full_name = ''
+    if winner_data:
+        full_name = ' '.join(winner_data)
+        full_name = ':' + ' '.join(full_name.split(':'))
+        full_name = ' '.join(full_name.split(','))
+
+    winner = username + full_name
+
     if winner not in winners:
         winners.append(winner)
 

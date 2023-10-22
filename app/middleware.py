@@ -95,7 +95,13 @@ def render_draw_info(draw: models.Draw, title_key='your_draw') -> str:
 
     for prize in prizes:
         if prize.preset_winners:
-            draw_text += f" - {prize.preset_winners} {prize.description};\n"
+            winner_links = []
+            for x in prize.preset_winners.split(', '):
+                user = x.split(':')
+                username = user.pop(0)
+                display_name = user and user.pop(0) or username
+                winner_links.append('<a href="https://t.me/{0}">{1}</a>'.format(username[1:], display_name))
+            draw_text += f" - {', '.join(winner_links)} {prize.description};\n"
         else:
             draw_text += f" - {prize.winners_count} случайных игроков {prize.description};\n"
 
@@ -162,49 +168,57 @@ def define_winners(draw: models.Draw):
         raise Exception('draw is not posted')
 
     players: list[models.DrawPlayer] = end_base.select_all(models.DrawPlayer, draw_id=draw.id)
-    players_map = dict((bot_lib.username_normal(x.username), x) for x in players)
+    players_username_map = {}
+    players_user_id_map = {}
+
+    for player in players:
+        player.username = bot_lib.username_normal(player.username)
+        players_user_id_map[player.user_id] = player
+        if player.username:
+            players_username_map[player.username] = player
 
     prizes: list[models.DrawPrize] = end_base.select_all(models.DrawPrize, draw_id=draw.id)
-
-    manual_player_usernames: list[str] = []
-
     players_to_raffle = 0
+
+    manual_players_map = {}
 
     for prize in prizes:
         if prize.preset_winners:
-            usernames = [bot_lib.username_normal(x) for x in prize.preset_winners.split(', ')]
-            manual_player_usernames += usernames
+            users = [y.split(':') for y in [bot_lib.username_normal(x) for x in prize.preset_winners.split(', ')]]
+            for user in users:
+                username = bot_lib.username_normal(user.pop(0))
+                manual_players_map[username] = user and user.pop(0) or username
         else:
             players_to_raffle += prize.winners_count
 
-    player_usernames: list[str] = [x for x in players_map if x not in manual_player_usernames]
+    player_ids: list[int] = [x for x in players_user_id_map if players_user_id_map[x].username not in manual_players_map]
 
-    winner_usernames: list[str] = []
+    winner_ids: list[int] = []
 
-    while len(winner_usernames) < players_to_raffle and len(player_usernames) > 0:
-        username = random.choice(player_usernames)
-        player_usernames.remove(username)
-        winner_usernames.append(username)
+    while len(winner_ids) < players_to_raffle and len(player_ids) > 0:
+        user_id = random.choice(player_ids)
+        player_ids.remove(user_id)
+        winner_ids.append(user_id)
 
     for prize in prizes:
         if prize.preset_winners:
-            usernames = [bot_lib.username_normal(x) for x in prize.preset_winners.split(', ')]
+            usernames = [bot_lib.username_normal(x.split(':').pop(0)) for x in prize.preset_winners.split(', ')]
             for username in usernames:
                 user_id = 0
-                display_name = bot_lib.display_name(username)
-                if username in players_map:
-                    player = players_map[username]
+                display_name = manual_players_map[username]
+                if username in players_username_map:
+                    player = players_username_map[username]
                     user_id = player.user_id
                     display_name = bot_lib.display_name(username, player.first_name, player.last_name)
                 end_base.new(models.DrawWinner, draw.id, prize.id, user_id, username, display_name)
         else:
             for ix in range(prize.winners_count):
-                if not len(winner_usernames):
+                if not len(winner_ids):
                     break
-                username = winner_usernames.pop(0)
-                player = players_map[username]
-                display_name = bot_lib.display_name(username, player.first_name, player.last_name)
-                end_base.new(models.DrawWinner, draw.id, prize.id, player.user_id, username, display_name)
+                user_id = winner_ids.pop(0)
+                player = players_user_id_map[user_id]
+                display_name = bot_lib.display_name(player.username, player.first_name, player.last_name)
+                end_base.new(models.DrawWinner, draw.id, prize.id, player.user_id, player.username, display_name)
 
 
 def render_winners(draw: models.Draw) -> (str, str):
@@ -230,6 +244,8 @@ def render_winners(draw: models.Draw) -> (str, str):
 
 
 def winner_to_link(draw_winner: models.DrawWinner) -> str:
+    if draw_winner.username:
+        return f"<a href='https://t.me/{draw_winner.username[1:]}'>{draw_winner.display_name}</a>"
     if draw_winner.user_id:
         return f"<a href='tg://user?id={draw_winner.user_id}'>{draw_winner.display_name}</a>"
     return draw_winner.display_name
@@ -261,7 +277,9 @@ def new_player(call: telebot.types.CallbackQuery) -> (str, str):
         if chat_member.status in get_on_restricted_statuses:
             return 'not_subscribed', text['not_subscribe']
 
-    middleware_base.new(models.DrawPlayer, draw_id, player_id, player.username or '', player.first_name or '', player.last_name or '')
+    username = bot_lib.username_normal(player.username or '')
+
+    middleware_base.new(models.DrawPlayer, draw_id, player_id, username, player.first_name or '', player.last_name or '')
 
     total = middleware_base.count(models.DrawPlayer, draw_id=draw_id)
 
@@ -312,4 +330,4 @@ def send_draw_message(chat_id: int, draw: models.Draw, draw_text: str, markup: t
     if draw.file_type == 'document':
         return bot.send_document(chat_id, draw.file_id, caption=draw_text, reply_markup=markup)
 
-    return bot.send_message(chat_id, draw_text, reply_markup=markup)
+    return bot.send_message(chat_id, draw_text, reply_markup=markup, parse_mode='HTML')
